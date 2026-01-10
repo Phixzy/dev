@@ -196,7 +196,6 @@ $conn->close();
                                 <th><i class="fas fa-check-circle"></i> Final Grade</th>
                                 <th><i class="fas fa-check-circle"></i> Average</th>
                                 <th><i class="fas fa-check-circle"></i> Remarks</th>
-                                <th><i class="fas fa-cog"></i> Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -234,14 +233,13 @@ $conn->close();
                                         <td style="font-weight: 700; color: #667eea; font-size: 1.1rem;">
                                             <?php echo number_format($grade['average'], 2); ?>
                                         </td>
-                                        <td style="text-align: center;">
+                                        <td>
                                             <span class="status-badge status-<?php echo strtolower($grade['status']); ?>">
                                                 <?php echo htmlspecialchars($grade['status']); ?>
                                             </span>
                                         </td>
-                                        <td>
-                                            <?php echo htmlspecialchars($grade['remarks'] ?? '-'); ?>
-                                        </td>
+                                        
+                                        
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
