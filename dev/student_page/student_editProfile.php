@@ -740,11 +740,11 @@ if (strpos($display_username, '@student') !== false) {
                         </div>
                         <div class="form-group">
                             <label for="new_password">New Password</label>
-                            <input type="password" id="new_password" name="new_password" minlength="6" placeholder="Enter new password">
+                            <input type="password" id="new_password" name="new_password" placeholder="Enter new password">
                         </div>
                         <div class="form-group">
                             <label for="confirm_password">Confirm New Password</label>
-                            <input type="password" id="confirm_password" name="confirm_password" minlength="6" placeholder="Confirm new password">
+                            <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password">
                         </div>
                     </div>
                 </div>
@@ -916,10 +916,10 @@ if (strpos($display_username, '@student') !== false) {
                 
                 // Validate password change
                 if (oldPassword && oldPassword.value) {
-                    if (!newPassword.value || newPassword.value.length < 6) {
+                    if (!newPassword.value) {
                         e.preventDefault();
                         newPassword.style.borderColor = '#f44336';
-                        alert('Please enter a new password with at least 6 characters.');
+                        alert('Please enter a new password.');
                         return false;
                     }
                     if (newPassword.value !== confirmPassword.value) {
