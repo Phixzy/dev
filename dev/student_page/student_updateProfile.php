@@ -1,4 +1,6 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 session_start();
 
 // Check if student is logged in
@@ -51,28 +53,35 @@ $current_student = $current_result->fetch_assoc();
 $stmt->close();
 
 // Get form data
-$first_name = $conn->real_escape_string($_POST['first_name'] ?? '');
-$last_name = $conn->real_escape_string($_POST['last_name'] ?? '');
-$email = $conn->real_escape_string($_POST['email'] ?? '');
+$first_name = $_POST['first_name'] ?? '';
+$last_name = $_POST['last_name'] ?? '';
+$email = $_POST['email'] ?? '';
 $new_username = isset($_POST['username']) ? trim($_POST['username']) : '';
 $old_password = $_POST['old_password'] ?? '';
 $new_password = $_POST['new_password'] ?? '';
 $confirm_password = $_POST['confirm_password'] ?? '';
 
-$date_of_birth = $conn->real_escape_string($_POST['date_of_birth'] ?? '');
-$gender = $conn->real_escape_string($_POST['gender'] ?? '');
-$student_phone = $conn->real_escape_string($_POST['student_phone'] ?? '');
-$address = $conn->real_escape_string($_POST['address'] ?? '');
-$guardian_name = $conn->real_escape_string($_POST['guardian_name'] ?? '');
-$guardian_phone = $conn->real_escape_string($_POST['guardian_phone'] ?? '');
-$guardian_address = $conn->real_escape_string($_POST['guardian_address'] ?? '');
-$elem_name = $conn->real_escape_string($_POST['elem_name'] ?? '');
-$elem_year = $conn->real_escape_string($_POST['elem_year'] ?? '');
-$junior_name = $conn->real_escape_string($_POST['junior_name'] ?? '');
-$junior_year = $conn->real_escape_string($_POST['junior_year'] ?? '');
-$senior_name = $conn->real_escape_string($_POST['senior_name'] ?? '');
-$senior_year = $conn->real_escape_string($_POST['senior_year'] ?? '');
-$strand = $conn->real_escape_string($_POST['strand'] ?? '');
+$date_of_birth = !empty($_POST['date_of_birth']) ? $_POST['date_of_birth'] : null;
+$gender = $_POST['gender'] ?? '';
+
+// Validate gender - only allow Male, Female, or Other
+// If empty or invalid, keep the current value
+$allowed_genders = ['Male', 'Female', 'Other'];
+if (empty($gender) || !in_array($gender, $allowed_genders)) {
+    $gender = $current_student['gender'] ?? 'Male'; // Default to Male if no valid value
+}
+$student_phone = $_POST['student_phone'] ?? '';
+$address = $_POST['address'] ?? '';
+$guardian_name = $_POST['guardian_name'] ?? '';
+$guardian_phone = $_POST['guardian_phone'] ?? '';
+$guardian_address = $_POST['guardian_address'] ?? '';
+$elem_name = $_POST['elem_name'] ?? '';
+$elem_year = $_POST['elem_year'] ?? '';
+$junior_name = $_POST['junior_name'] ?? '';
+$junior_year = $_POST['junior_year'] ?? '';
+$senior_name = $_POST['senior_name'] ?? '';
+$senior_year = $_POST['senior_year'] ?? '';
+$strand = $_POST['strand'] ?? '';
 
 // Validate required fields
 if (empty($first_name) || empty($last_name) || empty($email)) {
@@ -158,12 +167,6 @@ if (!empty($old_password)) {
         exit();
     }
     
-    if (strlen($new_password) < 6) {
-        $_SESSION['error'] = 'New password must be at least 6 characters long.';
-        header('Location: student_editProfile.php');
-        exit();
-    }
-    
     if ($new_password !== $confirm_password) {
         $_SESSION['error'] = 'New password and confirm password do not match.';
         header('Location: student_editProfile.php');
@@ -175,40 +178,82 @@ if (!empty($old_password)) {
     $password_changed = true;
 }
 
-// Build update query
-$update_fields = array();
-$update_fields[] = "first_name = '$first_name'";
-$update_fields[] = "last_name = '$last_name'";
-$update_fields[] = "email = '$email'";
-$update_fields[] = "date_of_birth = " . (empty($date_of_birth) ? "NULL" : "'$date_of_birth'");
-$update_fields[] = "gender = '$gender'";
-$update_fields[] = "student_phone = '$student_phone'";
-$update_fields[] = "address = '$address'";
-$update_fields[] = "guardian_name = '$guardian_name'";
-$update_fields[] = "guardian_phone = '$guardian_phone'";
-$update_fields[] = "guardian_address = '$guardian_address'";
-$update_fields[] = "elem_name = '$elem_name'";
-$update_fields[] = "elem_year = '$elem_year'";
-$update_fields[] = "junior_name = '$junior_name'";
-$update_fields[] = "junior_year = '$junior_year'";
-$update_fields[] = "senior_name = '$senior_name'";
-$update_fields[] = "senior_year = '$senior_year'";
-$update_fields[] = "strand = '$strand'";
+// Build update query using prepared statement
+$update_sql = "UPDATE students SET
+    first_name = ?,
+    last_name = ?,
+    email = ?,
+    date_of_birth = ?,
+    gender = ?,
+    student_phone = ?,
+    address = ?,
+    guardian_name = ?,
+    guardian_phone = ?,
+    guardian_address = ?,
+    elem_name = ?,
+    elem_year = ?,
+    junior_name = ?,
+    junior_year = ?,
+    senior_name = ?,
+    senior_year = ?,
+    strand = ?";
+
+$types = "sssssssssssssssss";
+$params = [
+    $first_name,
+    $last_name,
+    $email,
+    $date_of_birth,
+    $gender,
+    $student_phone,
+    $address,
+    $guardian_name,
+    $guardian_phone,
+    $guardian_address,
+    $elem_name,
+    $elem_year,
+    $junior_name,
+    $junior_year,
+    $senior_name,
+    $senior_year,
+    $strand
+];
 
 // Add username to update if changed
 if ($username_changed) {
-    $update_fields[] = "username = '" . $conn->real_escape_string($final_username) . "'";
+    $update_sql .= ", username = ?";
+    $types .= "s";
+    $params[] = $final_username;
 }
 
 // Add password to update if changed
 if ($password_changed) {
-    $update_fields[] = "password = '" . $hashed_password . "'";
+    $update_sql .= ", password = ?";
+    $types .= "s";
+    $params[] = $hashed_password;
 }
 
-// Build and execute update query
-$update_sql = "UPDATE students SET " . implode(", ", $update_fields) . " WHERE id = $student_id";
+$update_sql .= " WHERE id = ?";
+$types .= "i";
+$params[] = $student_id;
 
-if ($conn->query($update_sql)) {
+$stmt = $conn->prepare($update_sql);
+if ($stmt === false) {
+    $_SESSION['error'] = 'Failed to prepare statement: ' . $conn->error;
+    $conn->close();
+    header('Location: student_editProfile.php');
+    exit();
+}
+
+if (!$stmt->bind_param($types, ...$params)) {
+    $_SESSION['error'] = 'Failed to bind parameters: ' . $stmt->error;
+    $stmt->close();
+    $conn->close();
+    header('Location: student_editProfile.php');
+    exit();
+}
+
+if ($stmt->execute()) {
     // Update session username if changed
     if ($username_changed) {
         $_SESSION['username'] = $final_username;
