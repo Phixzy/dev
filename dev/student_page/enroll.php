@@ -172,8 +172,8 @@
                                 </div>
                             </div>
                             <div class="input-group">
-                                <label for="student_phone">Student Phone (9XXXXXXXXXX)</label>
-                                <input type="tel" name="student_phone" id="student_phone" placeholder="9123456789" required pattern="9[0-9]{9}" title="Please enter a valid 11-digit phone number starting with 9">
+                                <label for="student_phone">Student Phone (09XXXXXXXXX)</label>
+                                <input type="tel" name="student_phone" id="student_phone" maxlength="11" placeholder="9123456789" required pattern="9[0-9]{9}" title="Please enter a valid 11-digit phone number starting with 9">
                             </div>
                             <div class="input-group">
                                 <label for="address">Student Address</label>
@@ -184,8 +184,8 @@
                                 <input type="text" name="guardian_name" id="guardian_name" placeholder="Enter guardian name" required>
                             </div>
                             <div class="input-group">
-                                <label for="guardian_phone">Guardian Phone (9XXXXXXXXXX)</label>
-                                <input type="tel" name="guardian_phone" id="guardian_phone" placeholder="9123456789" required pattern="9[0-9]{9}" title="Please enter a valid 11-digit phone number starting with 9">
+                                <label for="guardian_phone">Guardian Phone (09XXXXXXXXX)</label>
+                                <input type="tel" name="guardian_phone" id="guardian_phone" maxlength="11" placeholder="9123456789" required pattern="9[0-9]{9}" title="Please enter a valid 11-digit phone number starting with 9">
                             </div>
                             <div class="input-group">
                                 <label for="guardian_address">Guardian Address</label>
@@ -206,7 +206,7 @@
                                 </div>
                                 <div class="input-group">
                                     <label for="elem_year">Year Graduated</label>
-                                    <input type="text" name="elem_year" id="elem_year" placeholder="e.g., 2015" required>
+                                    <input type="text" name="elem_year" id="elem_year" maxlength="4" placeholder="e.g., 2015" required>
                                 </div>
                             </div>
 
@@ -218,7 +218,7 @@
                                 </div>
                                 <div class="input-group">
                                     <label for="junior_year">Year Graduated</label>
-                                    <input type="text" name="junior_year" id="junior_year" placeholder="e.g., 2019" required>
+                                    <input type="text" name="junior_year" id="junior_year" maxlength="4" placeholder="e.g., 2019" required>
                                 </div>
                             </div>
 
@@ -230,7 +230,7 @@
                                 </div>
                                 <div class="input-group">
                                     <label for="senior_year">Year Graduated</label>
-                                    <input type="text" name="senior_year" id="senior_year" placeholder="e.g., 2021" required>
+                                    <input type="text" name="senior_year" id="senior_year" maxlength="4" placeholder="e.g., 2021" required>
                                 </div>
                                 <div class="input-group">
                                     <label for="strand">Strand</label>
@@ -574,6 +574,7 @@
             const feedbackDiv = document.getElementById('username-feedback');
             const previewSpan = document.getElementById('username-preview');
             
+            usernameInput.value = usernameInput.value.replace(/@/g, '');
             const username = usernameInput.value.trim();
             
             // Update preview
