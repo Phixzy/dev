@@ -13,39 +13,17 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-
-
-// Fetch all grades for display
-$all_grades = [];
-$grades_sql = "SELECT g.*, s.first_name, s.last_name, s.email 
-               FROM grades g 
-               LEFT JOIN students s ON g.student_username = s.username 
-               ORDER BY g.created_at DESC";
-$grades_result = $conn->query($grades_sql);
-
-if ($grades_result && $grades_result->num_rows > 0) {
-    while ($row = $grades_result->fetch_assoc()) {
-        $all_grades[] = $row;
-    }
-}
-
-// Fetch subjects for autocomplete
-$subjects = [];
-$subjects_sql = "SELECT subject_code, subject_name, course, year_level FROM subjects ORDER BY subject_name";
-$subjects_result = $conn->query($subjects_sql);
-if ($subjects_result && $subjects_result->num_rows > 0) {
-    while ($row = $subjects_result->fetch_assoc()) {
-        $subjects[] = $row;
-    }
-}
-
-// Fetch students for autocomplete
-$students = [];
-$students_sql = "SELECT username, first_name, last_name FROM students WHERE username LIKE '%@student' ORDER BY username";
+// Fetch all approved students
+$all_students = [];
+$students_sql = "SELECT DISTINCT s.username, s.first_name, s.last_name, s.college_course, s.college_year, s.status
+                 FROM students s 
+                 WHERE s.status = 'APPROVED'
+                 ORDER BY s.last_name ASC, s.first_name ASC";
 $students_result = $conn->query($students_sql);
+
 if ($students_result && $students_result->num_rows > 0) {
     while ($row = $students_result->fetch_assoc()) {
-        $students[] = $row;
+        $all_students[] = $row;
     }
 }
 
@@ -57,158 +35,81 @@ $conn->close();
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Font Awesome 6 - Primary Icon Library -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Material Icons as additional backup -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <title>Admin Dashboard - Grades</title>
+    <title>Admin Dashboard - Grades Management</title>
 </head>
 <body>
     <nav>
         <div class="logo-name">
-                        <span class="logo_name"><?php echo htmlspecialchars($_SESSION['admin_username']); ?></span>
-
+            <span class="logo_name"><?php echo htmlspecialchars($_SESSION['admin_username']); ?></span>
         </div>
         <div class="menu-items">
             <ul class="nav-links">
-                <li><a href="adminpage.php">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span class="link-name">Appointments</span>
-                </a></li>
-                <li><a href="student_status.php">
-                    <i class="fas fa-user-check"></i>
-                    <span class="link-name">Student Status</span>
-                </a></li>
-                <li><a href="grades.php" class="active">
-                    <i class="fas fa-chart-bar"></i>
-                    <span class="link-name">Grades</span>
-                </a></li>
-                <li><a href="master_list.php">
-                    <i class="fas fa-list-alt"></i>
-                    <span class="link-name">Master List</span>
-                </a></li>
-                <li><a href="emails.php">
-                    <i class="fas fa-envelope"></i>
-                    <span class="link-name">Emails</span>
-                </a></li>
-                <li><a href="edit_homepage.php">
-                    <i class="fas fa-edit"></i>
-                    <span class="link-name">Edit Homepage</span>
-                </a></li>
-                <li><a href="admin_user.php">
-                    <i class="fas fa-user-shield"></i>
-                    <span class="link-name">Admin User Management</span>
-                </a></li>
+                <li><a href="adminpage.php"><i class="fas fa-calendar-alt"></i><span class="link-name">Appointments</span></a></li>
+                <li><a href="student_status.php"><i class="fas fa-user-check"></i><span class="link-name">Student Status</span></a></li>
+                <li><a href="grades.php" class="active"><i class="fas fa-chart-bar"></i><span class="link-name">Grades</span></a></li>
+                <li><a href="master_list.php"><i class="fas fa-list-alt"></i><span class="link-name">Master List</span></a></li>
+                <li><a href="emails.php"><i class="fas fa-envelope"></i><span class="link-name">Emails</span></a></li>
+                <li><a href="edit_homepage.php"><i class="fas fa-edit"></i><span class="link-name">Edit Homepage</span></a></li>
+                <li><a href="admin_user.php"><i class="fas fa-user-shield"></i><span class="link-name">Admin User Management</span></a></li>
             </ul>
-            
             <ul class="logout-mode">
-                <li><a href="#">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span class="link-name">Logout</span>
-                </a></li>
-                <li class="mode">
-                    
-               
-            </li>
+                <li><a href="#"><i class="fas fa-sign-out-alt"></i><span class="link-name">Logout</span></a></li>
+                <li class="mode"></li>
             </ul>
         </div>
     </nav>
     <section class="dashboard">
       <div class="top">
-        <span class="sidebar-toggle">
-                <i class="fas fa-bars"></i>
-            </span>
+        <span class="sidebar-toggle"><i class="fas fa-bars"></i></span>
       </div>
         <div class="dash-content">
-            <!-- Display messages with proper positioning -->
-            <div class="messages-container" style="position: relative; z-index: 100; margin-top: 80px; margin-bottom: 20px;">
+            <div class="messages-container">
               <?php
               if (isset($_SESSION['message'])) {
-                  echo '<div class="global-message message" style="padding: 16px 24px; margin: 0 20px; border-radius: 8px; display: flex; align-items: center; gap: 12px; border-left: 5px solid #28a745;">';
-                  echo '<i class="fas fa-check-circle" style="color: #28a745; font-size: 24px;"></i>';
-                  echo '<span style="color: #155724; font-weight: 500;">' . htmlspecialchars($_SESSION['message']) . '</span>';
+                  echo '<div class="global-message message">';
+                  echo '<i class="fas fa-check-circle"></i>';
+                  echo '<span>' . htmlspecialchars($_SESSION['message']) . '</span>';
                   echo '</div>';
                   unset($_SESSION['message']);
               }
               if (isset($_SESSION['error'])) {
-                  echo '<div class="global-message error-message" style="padding: 16px 24px; margin: 0 20px; border-radius: 8px; display: flex; align-items: center; gap: 12px; border-left: 5px solid #dc3545;">';
-                  echo '<i class="fas fa-times-circle" style="color: #dc3545; font-size: 24px;"></i>';
-                  echo '<span style="color: #721c24; font-weight: 500;">' . htmlspecialchars($_SESSION['error']) . '</span>';
+                  echo '<div class="global-message error-message">';
+                  echo '<i class="fas fa-times-circle"></i>';
+                  echo '<span>' . htmlspecialchars($_SESSION['error']) . '</span>';
                   echo '</div>';
                   unset($_SESSION['error']);
               }
               ?>
             </div>
-         
-            
+        <br>
             <div class="activity">
                 <div class="title">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span class="text">Student Grade Management</span>
+                    <i class="fas fa-chart-bar"></i>
+                    <span class="text">Grades Management</span>
                 </div>
                 <div class="table-container">
                     <table class="compact-table">
                         <thead>
                             <tr>
-                                <th><i class="fas fa-user"></i> Student</th>
-                                <th><i class="fas fa-book"></i> Subject</th>
-                                <th><i class="fas fa-layer-group"></i> Year Level</th>
-                                <th><i class="fas fa-clock"></i> Semester</th>    
-                                <th><i class="fas fa-star"></i> Prelim</th>
-                                <th><i class="fas fa-star"></i> Midterm</th>
-                                <th><i class="fas fa-star"></i> Final</th>
-                                <th><i class="fas fa-graduation-cap"></i> Avg</th>
-                                <th><i class="fas fa-check-circle"></i> Status</th>
-                                <th><i class="fas fa-comment"></i> Remarks</th>
+                                <th><i class="fas fa-user"></i> Student Name</th>
+                                <th><i class="fas fa-book"></i> Course</th>
+                                <th><i class="fas fa-calendar"></i> Year</th>
                                 <th><i class="fas fa-cog"></i> Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (empty($all_grades)): ?>
-                                <tr>
-                                    <td colspan="11" class="no-data">
-                                        <i class="fas fa-clipboard-list" style="font-size: 2.5rem; color: #dee2e6; margin-bottom: 10px;"></i>
-                                        <p>No grades have been added yet.</p>
-                                        <p style="font-size: 0.85rem; color: #6c757d;">Use the form below to add student grades.</p>
-                                    </td>
-                                </tr>
+                            <?php if (empty($all_students)): ?>
+                                <tr><td colspan="4" class="no-data"><i class="fas fa-clipboard-list"></i><p>No students found.</p><p>Approved students will appear here.</p></td></tr>
                             <?php else: ?>
-                                <?php foreach ($all_grades as $grade): ?>
-                                    <tr data-id="<?php echo $grade['id']; ?>">
-                                        <td>
-                                            <div style="font-weight: 600;">
-                                                <?php echo htmlspecialchars($grade['first_name'] . ' ' . $grade['last_name']); ?>
-                                            </div>
-                                            <div style="font-size: 0.75rem; color: #6c757d; font-family: monospace;">
-                                                <?php echo htmlspecialchars($grade['student_username']); ?>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style="font-weight: 600;"><?php echo htmlspecialchars($grade['subject_code']); ?></div>
-                                            <div style="font-size: 0.75rem; color: #6c757d;"><?php echo htmlspecialchars($grade['subject_name']); ?></div>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($grade['year_level']); ?></td>
-                                        <td><?php echo htmlspecialchars($grade['semester']); ?></td>
-                                        <td><?php echo number_format($grade['prelim_grade'], 2); ?></td>
-                                        <td><?php echo number_format($grade['midterm_grade'], 2); ?></td>
-                                        <td><?php echo number_format($grade['final_grade'], 2); ?></td>
-                                        <td style="font-weight: 600; color: #667eea;"><?php echo number_format($grade['average'], 2); ?></td>
-                                        <td>
-                                            <span class="status-badge status-<?php echo strtolower($grade['status']); ?>">
-                                                <?php echo htmlspecialchars($grade['status']); ?>
-                                            </span>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($grade['remarks'] ?? '-'); ?></td>
-                                        <td>
-                                            <div class="action-buttons">
-                                                <button class="btn-edit" title="Edit Grade" onclick="editGrade(<?php echo $grade['id']; ?>)">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button class="btn-delete" title="Delete Grade" onclick="deleteGrade(<?php echo $grade['id']; ?>, '<?php echo htmlspecialchars($grade['student_username']); ?>', '<?php echo htmlspecialchars($grade['subject_code']); ?>')">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
+                                <?php foreach ($all_students as $student): ?>
+                                    <tr>
+                                        <td class="student-name"><div><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></div><div class="username"><?php echo htmlspecialchars($student['username']); ?></div></td>
+                                        <td><?php echo htmlspecialchars($student['college_course'] ?? '-'); ?></td>
+                                        <td><?php echo htmlspecialchars($student['college_year'] ?? '-'); ?></td>
+                                        <td class="actions-cell">
+                                            <button class="btn-action btn-view" title="View/Edit Grades" onclick="openGradesModal('<?php echo urlencode($student['username']); ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'edit')"><i class="fas fa-eye"></i> View</button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -216,1577 +117,708 @@ $conn->close();
                         </tbody>
                     </table>
                 </div>
-
-    <!-- Add New Grade Form -->
-    <div class="title">
-        <i class="fas fa-plus-circle"></i>
-        <span class="text">Add New Grade</span>
-    </div>
-    
-    <div class="form-container">
-        <form method="post" action="addGrade.php" class="grade-form">
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="student_username"><i class="fas fa-user"></i> Student Username</label>
-                    <input type="text" id="student_username" name="student_username" required>
-                </div>
-                <div class="form-group">
-                    <label for="subject_code"><i class="fas fa-book"></i> Subject Code</label>
-                    <input type="text" id="subject_code" name="subject_code" required>
-                </div>
-                <div class="form-group">
-                    <label for="semester"><i class="fas fa-clock"></i> Semester</label>
-                    <select id="semester" name="semester" required>
-                        <option value="">Select Semester</option>
-                        <option value="1st Semester">1st Semester</option>
-                        <option value="2nd Semester">2nd Semester</option>
-                        <option value="Summer">Summer</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="prelim_grade"><i class="fas fa-star"></i> Prelim Grade</label>
-                    <input type="number" id="prelim_grade" name="prelim_grade" min="0" max="100" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="midterm_grade"><i class="fas fa-star"></i> Midterm Grade</label>
-                    <input type="number" id="midterm_grade" name="midterm_grade" min="0" max="100" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="final_grade"><i class="fas fa-star"></i> Final Grade</label>
-                    <input type="number" id="final_grade" name="final_grade" min="0" max="100" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="average"><i class="fas fa-graduation-cap"></i> Average</label>
-                    <input type="number" id="average" name="average" min="0" max="100" step="0.01" required readonly style="background-color: #e9ecef; cursor: not-allowed;">
-                </div>
-                <div class="form-group">
-                    <label for="status"><i class="fas fa-check-circle"></i> Status</label>
-                    <input type="text" id="status" name="status" readonly style="background-color: #e9ecef; cursor: not-allowed; font-weight: 600; color: #495057;">
-                </div>
-                <div class="form-group">
-                    <label for="remarks"><i class="fas fa-comment"></i> Remarks</label>
-                    <input type="text" id="remarks" name="remarks" readonly style="background-color: #e9ecef; cursor: not-allowed;">
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-submit" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(102, 126, 234, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 8px rgba(102, 126, 234, 0.3)'">
-                        <i class="fas fa-plus" style="font-size: 16px;"></i> Add Grade
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-
-    </div>
         </div>
     </section>
 
-    <!-- Edit Grade Modal -->
-    <div id="editGradeModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
-        <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 600px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee;">
-                <h2 style="margin: 0; color: #333; display: flex; align-items: center; gap: 10px;"><i class="fas fa-edit" style="color: #667eea;"></i> Edit Grade</h2>
-                <span onclick="closeEditModal()" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+    <!-- Success Popup -->
+    <div id="successPopup" class="success-popup">
+        <div class="success-popup-content">
+            <div class="success-popup-header">
+                <i class="fas fa-check-circle"></i>
+                <h3>Success</h3>
             </div>
-            
-            <div id="editGradeContent">
-                <div style="text-align: center; padding: 40px;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #667eea;"></i>
-                    <p style="margin-top: 20px; color: #666;">Loading grade data...</p>
+            <div class="success-popup-body">
+                <p id="successPopupMessage"></p>
+            </div>
+            <div class="success-popup-footer">
+                <button class="btn-action btn-close" onclick="closeSuccessPopup()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Popup -->
+    <div id="errorPopup" class="error-popup">
+        <div class="error-popup-content">
+            <div class="error-popup-header">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Error</h3>
+            </div>
+            <div class="error-popup-body">
+                <p id="errorPopupMessage"></p>
+            </div>
+            <div class="error-popup-footer">
+                <button class="btn-action btn-close" onclick="closeErrorPopup()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grades Modal -->
+    <div id="gradesModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <div class="modal-header-title">
+                    <i class="fas fa-chart-bar"></i>
+                    <h2 id="modalStudentName">Student Grades</h2>
+                </div>
+                <div class="modal-header-actions">
+                    <button class="modal-close-btn" onclick="closeGradesModal()" title="Close"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="student-info-card" id="studentInfoCard">
+                    <!-- Student info will be populated here -->
+                </div>
+                <input type="hidden" id="currentStudentUsername" value="">
+                <div class="grades-table-container">
+                    <table class="compact-table" id="gradesTable">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-book"></i> Subject Name</th>
+                                <th><i class="fas fa-code"></i> Subject Code</th>
+                                <th><i class="fas fa-chalkboard-teacher"></i> Instructor</th>
+                                <th><i class="fas fa-calendar"></i> Semester</th>
+                                <th><i class="fas fa-edit"></i> Prelim</th>
+                                <th><i class="fas fa-edit"></i> Midterm</th>
+                                <th><i class="fas fa-edit"></i> Final</th>
+                                <th><i class="fas fa-calculator"></i> Average</th>
+                                <th><i class="fas fa-check-circle"></i> Remarks</th>
+                                <th><i class="fas fa-cog"></i> Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gradesTableBody">
+                            <tr><td colspan="10" class="no-data"><i class="fas fa-spinner fa-spin"></i><p>Loading grades...</p></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-action btn-close" onclick="closeGradesModal()"><i class="fas fa-times"></i> Close</button>
                 </div>
             </div>
         </div>
     </div>
-</body>
-</html>
 
 <script>
-    // Wait for DOM to load
-    document.addEventListener('DOMContentLoaded', function() {
-        // Enhanced button functionality
-        const buttons = document.querySelectorAll('button');
-        buttons.forEach(button => {
-            // Add hover effects
-            button.addEventListener('mouseenter', function() {
-                if (!this.disabled) {
-                    this.style.transform = 'translateY(-2px)';
-                    this.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
-                }
-            });
-            
-            button.addEventListener('mouseleave', function() {
-                if (!this.disabled) {
-                    this.style.transform = 'translateY(0)';
-                    this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                }
-            });
-            
-            button.addEventListener('mousedown', function() {
-                if (!this.disabled) {
-                    this.style.transform = 'translateY(0)';
-                }
-            });
-            
-            // Form submission loading state (excluding delete forms)
-            const form = button.closest('form');
-            if (form && !form.hasAttribute('data-delete-form')) {
-                form.addEventListener('submit', function(e) {
-                    // Don't interfere with delete forms
-                    if (button.name === 'delete' || button.name === 'delete_subject') {
-                        return;
-                    }
-                    
-                    button.disabled = true;
-                    button.style.opacity = '0.7';
-                    button.style.cursor = 'wait';
-                    
-                    // Re-enable after 2 seconds if form doesn't redirect
-                    setTimeout(() => {
-                        button.disabled = false;
-                        button.style.opacity = '1';
-                        button.style.cursor = 'pointer';
-                    }, 2000);
-                });
-            }
-        });
+    // Modal functions
+    async function openGradesModal(username, studentName, mode = 'view') {
+        document.getElementById('gradesModal').style.display = 'block';
+        document.getElementById('modalStudentName').textContent = mode === 'edit' ? 'Edit Grades: ' + studentName : 'Grades: ' + studentName;
+        document.getElementById('gradesTableBody').innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-spinner fa-spin"></i><p>Loading grades...</p></td></tr>';
+        document.getElementById('studentInfoCard').style.display = 'none';
+        document.getElementById('currentStudentUsername').value = decodeURIComponent(username);
+
+        // Store the mode for later use
+        document.getElementById('currentStudentUsername').setAttribute('data-mode', mode);
+
+        // Fetch grades (which now also fetches enrolled subjects internally)
+        fetchGrades(username, mode);
+    }
+
+    function closeGradesModal() {
+        document.getElementById('gradesModal').style.display = 'none';
+    }
+
+    function fetchGrades(username, mode = 'view') {
+        const studentUsername = decodeURIComponent(username);
+        console.log('Fetching grades for username:', studentUsername);
         
-        // Icon fallback system
-        const checkIcons = () => {
-            const icons = document.querySelectorAll('i[class*="uil"]');
-            let fallbackCount = 0;
-            
-            icons.forEach(icon => {
-                // Check if icon is properly loaded
-                const computedStyle = window.getComputedStyle(icon);
-                if (computedStyle.fontFamily.includes('serif') || computedStyle.fontFamily.includes('Times')) {
-                    // Iconscout failed to load, try Font Awesome fallback
-                    const originalClass = icon.className;
-                    
-                    // Simple icon replacements
-                    const iconMap = {
-                        'uil-calendar': 'fa-calendar',
-                        'uil-clock': 'fa-clock',
-                        'uil-clock-eight': 'fa-clock',
-                        'uil-layer-group': 'fa-users',
-                        'uil-check-circle': 'fa-check-circle',
-                        'uil-trash': 'fa-trash',
-                        'uil-user': 'fa-user',
-                        'uil-calendar-alt': 'fa-calendar-alt',
-                        'uil-files-landscapes': 'fa-file-alt',
-                        'uil-chart': 'fa-chart-bar',
-                        'uil-comments': 'fa-comments',
-                        'uil-signout': 'fa-sign-out-alt',
-                        'uil-plus-circle': 'fa-plus-circle',
-                        'uil-plus': 'fa-plus',
-                        'uil-user-check': 'fa-user-check',
-                        'uil-at': 'fa-at',
-                        'uil-graduation-cap': 'fa-graduation-cap',
-                        'uil-cog': 'fa-cog',
-                        'uil-calendar-times': 'fa-calendar-times',
-                        'uil-user-times': 'fa-user-times',
-                        'uil-check': 'fa-check',
-                        'uil-times': 'fa-times',
-                        'uil-eye': 'fa-eye',
-                        'uil-question': 'fa-question',
-                        'uil-estate': 'fa-home'
-                    };
-                    
-                    // Replace icon class
-                    for (const [uilIcon, faIcon] of Object.entries(iconMap)) {
-                        if (originalClass.includes(uilIcon)) {
-                            icon.className = originalClass.replace(uilIcon, faIcon);
-                            icon.style.fontFamily = 'Font Awesome 6 Free';
-                            icon.style.fontWeight = '900';
-                            fallbackCount++;
-                            break;
+        // Add cache-busting timestamp
+        const timestamp = new Date().getTime();
+        
+        // Fetch grades from the database
+        fetch('getGradeData.php?username=' + encodeURIComponent(username) + '&_=' + timestamp)
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(gradesData => {
+                console.log('Grades Data:', JSON.stringify(gradesData, null, 2));
+                
+                const tbody = document.getElementById('gradesTableBody');
+                
+                if (gradesData.error) {
+                    console.log('Error from API:', gradesData.error);
+                    tbody.innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-exclamation-circle"></i><p>' + gradesData.error + '</p></td></tr>';
+                    return;
+                }
+                
+                const existingGrades = gradesData.grades || [];
+                console.log('Number of grades found:', existingGrades.length);
+                console.log('Student data:', gradesData.student);
+                
+                if (existingGrades.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-clipboard-list"></i><p>No grades found for this student (' + studentUsername + ').</p><p>Click Edit to add grades.</p></td></tr>';
+                    // Still show student info even if no grades
+                    if (gradesData.student) {
+                        const infoCard = document.getElementById('studentInfoCard');
+                        infoCard.innerHTML = '<div class="student-info-content"><div class="student-avatar"><i class="fas fa-user"></i></div><div class="student-details"><h3>' + gradesData.student.first_name + ' ' + gradesData.student.last_name + '</h3><p>' + gradesData.student.username + '</p></div><div class="student-meta"><div class="meta-item"><span class="meta-label">Course</span><span class="meta-value">' + (gradesData.student.college_course || '-') + '</span></div><div class="meta-item"><span class="meta-label">Year Level</span><span class="meta-value">' + (gradesData.student.college_year || '-') + '</span></div></div></div>';
+                        infoCard.style.display = 'block';
+                    }
+                    return;
+                } else {
+                    let html = '';
+                    existingGrades.forEach(function(grade) {
+                        const isNew = grade.isNew || !grade.id || grade.id.toString().startsWith('new_');
+                        const prelimVal = parseFloat(grade.prelim_grade) > 0 ? parseFloat(grade.prelim_grade).toFixed(2) : '';
+                        const midtermVal = parseFloat(grade.midterm_grade) > 0 ? parseFloat(grade.midterm_grade).toFixed(2) : '';
+                        const finalVal = parseFloat(grade.final_grade) > 0 ? parseFloat(grade.final_grade).toFixed(2) : '';
+                        const avgVal = parseFloat(grade.average) > 0 ? parseFloat(grade.average).toFixed(2) : (isNew ? '-' : '');
+                        const remarksVal = grade.remarks || (isNew ? '' : '');
+
+                        const isViewMode = mode === 'view';
+                        const readonlyAttr = isViewMode ? ' readonly' : '';
+                        const disabledAttr = isViewMode ? ' disabled' : '';
+                        
+                        const gradeId = grade.id || ('new_' + grade.subject_code + '_' + grade.semester.replace(' ', ''));
+                        
+                        html += '<tr data-grade-id="' + gradeId + '"' + (isNew ? ' class="new-grade-row"' : '') + '>';
+                        html += '<td class="subject-cell">' + grade.subject_name + '</td>';
+                        html += '<td><input type="text" class="grade-input" id="subjectCode-' + gradeId + '" value="' + grade.subject_code + '"' + readonlyAttr + '></td>';
+
+                        // Instructor name
+                        const instructorName = grade.instructor_name || '';
+                        html += '<td><input type="text" class="grade-input instructor-input" id="instructor-' + gradeId + '" value="' + instructorName + '" placeholder="-" readonly></td>';
+
+                        // Semester dropdown
+                        html += '<td>';
+                        html += '<select class="grade-input semester-select" id="semester-' + gradeId + '"' + disabledAttr + ' onchange="calculateAverage(\'' + gradeId + '\')">';
+                        html += '<option value="1st Sem"' + (grade.semester === '1st Sem' ? ' selected' : '') + '>1st Sem</option>';
+                        html += '<option value="2nd Sem"' + (grade.semester === '2nd Sem' ? ' selected' : '') + '>2nd Sem</option>';
+                        html += '<option value="Summer"' + (grade.semester === 'Summer' ? ' selected' : '') + '>Summer</option>';
+                        html += '</select>';
+                        html += '</td>';
+
+                        // Editable grade inputs
+                        html += '<td><input type="number" class="grade-input prelim-input" min="0" max="100" step="0.01" value="' + prelimVal + '" placeholder="-"' + readonlyAttr + ' onchange="calculateAverage(\'' + gradeId + '\')" oninput="calculateAverage(\'' + gradeId + '\')"></td>';
+                        html += '<td><input type="number" class="grade-input midterm-input" min="0" max="100" step="0.01" value="' + midtermVal + '" placeholder="-"' + readonlyAttr + ' onchange="calculateAverage(\'' + gradeId + '\')" oninput="calculateAverage(\'' + gradeId + '\')"></td>';
+                        html += '<td><input type="number" class="grade-input final-input" min="0" max="100" step="0.01" value="' + finalVal + '" placeholder="-"' + readonlyAttr + ' onchange="calculateAverage(\'' + gradeId + '\')" oninput="calculateAverage(\'' + gradeId + '\')"></td>';
+
+                        // Read-only average
+                        html += '<td><strong class="average-display" id="avg-' + gradeId + '">' + avgVal + '</strong></td>';
+
+                        // Remarks
+                        html += '<td><input type="text" class="grade-input remarks-input" id="remarks-' + gradeId + '" value="' + remarksVal + '" placeholder="" readonly></td>';
+
+                        // Action buttons
+                        html += '<td class="actions-cell">';
+                        if (mode === 'edit') {
+                            html += '<button class="btn-action btn-save" id="save-' + gradeId + '" onclick="saveGrade(\'' + gradeId + '\')" title="Save Changes"><i class="fas fa-save"></i></button>';
+                            html += '<span class="status-indicator status-' + gradeId + '"></span>';
                         }
+                        html += '</td>';
+                        html += '</tr>';
+                    });
+                    tbody.innerHTML = html;
+                }
+                
+                // Show student info
+                if (gradesData.student) {
+                    const infoCard = document.getElementById('studentInfoCard');
+                    infoCard.innerHTML = '<div class="student-info-content"><div class="student-avatar"><i class="fas fa-user"></i></div><div class="student-details"><h3>' + gradesData.student.first_name + ' ' + gradesData.student.last_name + '</h3><p>' + gradesData.student.username + '</p></div><div class="student-meta"><div class="meta-item"><span class="meta-label">Course</span><span class="meta-value">' + (gradesData.student.college_course || '-') + '</span></div><div class="meta-item"><span class="meta-label">Year Level</span><span class="meta-value">' + (gradesData.student.college_year || '-') + '</span></div></div></div>';
+                    infoCard.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                document.getElementById('gradesTableBody').innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-exclamation-circle"></i><p>Error loading grades: ' + error.message + '</p><p>Check browser console for details.</p></td></tr>';
+            });
+    }
+
+    // Calculate average and determine status
+    function calculateAverage(gradeId) {
+        const row = document.querySelector('tr[data-grade-id="' + gradeId + '"]');
+        if (!row) return;
+        
+        const prelim = parseFloat(row.querySelector('.prelim-input').value) || 0;
+        const midterm = parseFloat(row.querySelector('.midterm-input').value) || 0;
+        const final = parseFloat(row.querySelector('.final-input').value) || 0;
+        const remarksInput = row.querySelector('.remarks-input');
+        
+        let gradesCount = 0;
+        let gradesSum = 0;
+        
+        // Check if grades are entered (treat 0 as empty/not yet taken)
+        // Only count grades that are explicitly entered and > 0
+        const prelimVal = row.querySelector('.prelim-input').value.trim();
+        const midtermVal = row.querySelector('.midterm-input').value.trim();
+        const finalVal = row.querySelector('.final-input').value.trim();
+        
+        if (prelimVal !== '' && prelimVal !== '-' && prelimVal !== '0' && prelim !== 0) {
+            gradesCount++;
+            gradesSum += prelim;
+        }
+        if (midtermVal !== '' && midtermVal !== '-' && midtermVal !== '0' && midterm !== 0) {
+            gradesCount++;
+            gradesSum += midterm;
+        }
+        if (finalVal !== '' && finalVal !== '-' && finalVal !== '0' && final !== 0) {
+            gradesCount++;
+            gradesSum += final;
+        }
+        
+        const average = gradesCount > 0 ? (gradesSum / gradesCount) : 0;
+        
+        // Update average display
+        const avgDisplay = document.getElementById('avg-' + gradeId);
+        if (avgDisplay) {
+            avgDisplay.textContent = average > 0 ? average.toFixed(2) : '-';
+        }
+        
+        // Auto-update remarks based on grades entered
+        if (remarksInput) {
+            if (gradesCount === 0) {
+                remarksInput.value = '';
+            } else if (gradesCount < 3) {
+                // Not all grades entered - show as Incomplete
+                remarksInput.value = 'Incomplete';
+            } else if (average >= 75) {
+                // All grades entered and average >= 75
+                remarksInput.value = 'Passed';
+            } else {
+                // All grades entered but average < 75
+                remarksInput.value = 'Failed';
+            }
+        }
+    }
+
+    // Save new grade via AJAX
+    function saveNewGrade(gradeId) {
+        // Ensure gradeId is a string for consistent handling
+        const gradeIdStr = String(gradeId);
+        
+        const row = document.querySelector('tr[data-grade-id="' + gradeIdStr + '"]');
+        if (!row) return;
+        
+        const studentUsername = document.getElementById('currentStudentUsername').value;
+        const subjectCode = document.getElementById('subjectCode-' + gradeIdStr).value;
+        const semester = row.querySelector('.semester-select').value;
+        const prelim = parseFloat(row.querySelector('.prelim-input').value) || 0;
+        const midterm = parseFloat(row.querySelector('.midterm-input').value) || 0;
+        const final = parseFloat(row.querySelector('.final-input').value) || 0;
+        const remarks = row.querySelector('.remarks-input').value;
+        const subjectName = row.querySelector('.subject-cell').textContent;
+        
+        // Validate grades
+        if (prelim < 0 || prelim > 100 || midterm < 0 || midterm > 100 || final < 0 || final > 100) {
+            showStatusMessage(gradeIdStr, 'Grades must be between 0 and 100', 'error');
+            return;
+        }
+        
+        if (empty(subjectCode)) {
+            showStatusMessage(gradeIdStr, 'Subject code is required', 'error');
+            return;
+        }
+        
+        const saveBtn = document.getElementById('save-' + gradeIdStr);
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
+        const formData = new FormData();
+        formData.append('student_username', studentUsername);
+        formData.append('subject_code', subjectCode);
+        formData.append('subject_name', subjectName);
+        formData.append('semester', semester);
+        formData.append('prelim_grade', prelim);
+        formData.append('midterm_grade', midterm);
+        formData.append('final_grade', final);
+        formData.append('remarks', remarks);
+        
+        fetch('addNewGrade.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('Add grade response status:', response.status);
+            console.log('Add grade response headers:', response.headers.get('content-type'));
+            return response.text();
+        })
+        .then(text => {
+            console.log('Raw add grade response:', text);
+            // Try to parse as JSON
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error('Failed to parse JSON:', e);
+                // Show the actual response in the error message
+                const displayText = text.length > 200 ? text.substring(0, 200) + '...' : text;
+                showStatusMessage(gradeIdStr, 'Server error: ' + displayText, 'error');
+                return;
+            }
+            if (data.success) {
+                showStatusMessage(gradeIdStr, 'New grade added successfully!', 'success');
+                // Refresh the grades table to show the saved grade with proper ID
+                const username = document.getElementById('currentStudentUsername').value;
+                fetchGrades(encodeURIComponent(username), 'edit');
+            } else {
+                showStatusMessage(gradeIdStr, data.message || 'Error adding new grade', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error adding new grade:', error);
+            showStatusMessage(gradeIdStr, 'Error adding grade: ' + error.message, 'error');
+        })
+        .finally(() => {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save';
+        });
+    }
+
+    // Helper function to check if a value is empty
+    function empty(value) {
+        return value === null || value === undefined || value === '';
+    }
+
+    // Save grade via AJAX
+    function saveGrade(gradeId) {
+        // Ensure gradeId is a string for string operations
+        const gradeIdStr = String(gradeId);
+        
+        console.log('saveGrade called with gradeId:', gradeId, 'gradeIdStr:', gradeIdStr);
+        
+        // Check if this is a new grade (from "Add New Grade" button)
+        if (gradeIdStr.startsWith('new_')) {
+            console.log('Routing to saveNewGrade');
+            saveNewGrade(gradeIdStr);  // Pass the string version
+            return;
+        }
+        
+        console.log('Routing to saveGrade.php with grade_id:', gradeIdStr);
+        
+        const row = document.querySelector('tr[data-grade-id="' + gradeIdStr + '"]');
+        if (!row) return;
+        
+        const subjectCode = document.getElementById('subjectCode-' + gradeIdStr).value;
+        const semester = row.querySelector('.semester-select').value;
+        const prelim = parseFloat(row.querySelector('.prelim-input').value) || 0;
+        const midterm = parseFloat(row.querySelector('.midterm-input').value) || 0;
+        const final = parseFloat(row.querySelector('.final-input').value) || 0;
+        const remarks = row.querySelector('.remarks-input').value;
+        
+        // Validate grades
+        if (prelim < 0 || prelim > 100 || midterm < 0 || midterm > 100 || final < 0 || final > 100) {
+            showStatusMessage(gradeIdStr, 'Grades must be between 0 and 100', 'error');
+            return;
+        }
+        
+        const saveBtn = document.getElementById('save-' + gradeIdStr);
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
+        const formData = new FormData();
+        formData.append('grade_id', gradeId);
+        formData.append('subject_code', subjectCode);
+        formData.append('semester', semester);
+        formData.append('prelim_grade', prelim);
+        formData.append('midterm_grade', midterm);
+        formData.append('final_grade', final);
+        formData.append('remarks', remarks);
+        
+        fetch('saveGrade.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('Save response status:', response.status);
+            console.log('Save response headers:', response.headers.get('content-type'));
+            return response.text();
+        })
+        .then(text => {
+            console.log('Raw response:', text);
+            // Try to parse as JSON
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error('Failed to parse JSON:', e);
+                // Show the actual response in the error message
+                const displayText = text.length > 200 ? text.substring(0, 200) + '...' : text;
+                showStatusMessage(gradeIdStr, 'Server error: ' + displayText, 'error');
+                return;
+            }
+            console.log('Save response data:', JSON.stringify(data, null, 2));
+            if (data.success) {
+                showStatusMessage(gradeIdStr, 'Saved!', 'success');
+                // Update the average and status display
+                if (data.data) {
+                    const avgDisplay = document.getElementById('avg-' + gradeIdStr);
+                    if (avgDisplay && data.data.average) {
+                        avgDisplay.textContent = data.data.average;
                     }
                 }
+            } else {
+                showStatusMessage(gradeIdStr, data.message || 'Error saving', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving grade:', error);
+            showStatusMessage(gradeIdStr, 'Error saving grade: ' + error.message, 'error');
+        })
+        .finally(() => {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save';
+        });
+    }
+
+    // Show status message for a grade row
+    function showStatusMessage(gradeId, message, type) {
+        if (type === 'error') {
+            showErrorPopup(message);
+        } else if (type === 'success') {
+            showSuccessPopup(message);
+        }
+    }
+
+    // Show error popup
+    function showErrorPopup(message) {
+        document.getElementById('errorPopupMessage').textContent = message;
+        document.getElementById('errorPopup').style.display = 'block';
+    }
+
+    // Close error popup
+    function closeErrorPopup() {
+        document.getElementById('errorPopup').style.display = 'none';
+    }
+
+    // Show success popup
+    function showSuccessPopup(message) {
+        document.getElementById('successPopupMessage').textContent = message;
+        document.getElementById('successPopup').style.display = 'block';
+    }
+
+    // Close success popup
+    function closeSuccessPopup() {
+        document.getElementById('successPopup').style.display = 'none';
+    }
+
+    // Fetch enrolled subjects for a student (all subjects based on course/year)
+    let cachedEnrolledSubjects = [];
+    
+    function fetchEnrolledSubjects(studentUsername, callback = null) {
+        return fetch('getEnrolledSubjects.php?student_username=' + encodeURIComponent(studentUsername))
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.subjects) {
+                    cachedEnrolledSubjects = data.subjects;
+                    // Execute callback if provided
+                    if (callback && typeof callback === 'function') {
+                        callback(data.subjects);
+                    }
+                } else {
+                    cachedEnrolledSubjects = [];
+                    // Still execute callback with empty array so UI can be updated
+                    if (callback && typeof callback === 'function') {
+                        callback([]);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching enrolled subjects:', error);
+                cachedEnrolledSubjects = [];
+                // Execute callback even on error to update UI
+                if (callback && typeof callback === 'function') {
+                    callback([]);
+                }
             });
-            
-            console.log(`Applied ${fallbackCount} icon fallbacks`);
-        };
+    }
+
+    // Update subject name when subject code is manually entered for existing grades
+    function updateSubjectCode(gradeId) {
+        const subjectCode = document.getElementById('subjectCode-' + gradeId).value.trim();
+        const subjectNameCell = document.querySelector('tr[data-grade-id="' + gradeId + '"] .subject-cell');
         
-        // Check icons after page load
-        setTimeout(checkIcons, 1000);
-        setTimeout(checkIcons, 3000); // Double check after CDN loads
-        
-        // Original sidebar functionality
+        if (subjectCode && cachedEnrolledSubjects.length > 0) {
+            const subject = cachedEnrolledSubjects.find(s => s.subject_code.toLowerCase() === subjectCode.toLowerCase());
+            if (subject) {
+                subjectNameCell.textContent = subject.subject_name;
+            }
+        }
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('gradesModal');
+        if (event.target === modal) {
+            closeGradesModal();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
         const body = document.querySelector("body");
-        const modeToggle = body.querySelector(".mode-toggle");
         const sidebar = body.querySelector("nav");
         const sidebarToggle = body.querySelector(".sidebar-toggle");
-        
-        let getMode = localStorage.getItem("mode");
-        if(getMode && getMode ==="dark"){
-            body.classList.toggle("dark");
-        }
-        let getStatus = localStorage.getItem("status");
-        if(getStatus && getStatus ==="close"){
-            sidebar.classList.add("close");
-        } else {
-            sidebar.classList.remove("close");
-        }
-        
-        if (modeToggle) {
-            modeToggle.addEventListener("click", () => {
-                body.classList.toggle("dark");
-                if(body.classList.contains("dark")){
-                    localStorage.setItem("mode", "dark");
-                }else{
-                    localStorage.setItem("mode", "light");
-                }
-            });
-        }
-        
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener("click", () => {
-                sidebar.classList.toggle("close");
-                if(sidebar.classList.contains("close")){
-                    localStorage.setItem("status", "close");
-                }else{
-                    localStorage.setItem("status", "open");
-                }
-            });
-        }
-        
-        // Force style application for all action buttons
-        const actionButtons = document.querySelectorAll('.btn-approve, .btn-reject, .btn-view');
-        actionButtons.forEach(button => {
-            // Ensure inline styles are applied
-            const computedStyle = window.getComputedStyle(button);
-            if (computedStyle.backgroundColor === 'rgba(0, 0, 0, 0)' || computedStyle.backgroundColor === 'transparent') {
-                // Re-apply styles if not showing
-                if (button.classList.contains('btn-approve')) {
-                    button.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
-                    button.style.color = 'white';
-                    button.style.border = 'none';
-                } else if (button.classList.contains('btn-reject')) {
-                    button.style.background = 'linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)';
-                    button.style.color = 'white';
-                    button.style.border = 'none';
-                } else if (button.classList.contains('btn-view')) {
-                    button.style.background = 'linear-gradient(135deg, #17a2b8 0%, #00bcd4 100%)';
-                    button.style.color = 'white';
-                    button.style.border = 'none';
-                }
-            }
+        localStorage.getItem("mode") === "dark" && body.classList.toggle("dark");
+        localStorage.getItem("status") === "close" && sidebar.classList.add("close");
+        sidebarToggle && sidebarToggle.addEventListener("click", function() {
+            sidebar.classList.toggle("close");
+            localStorage.setItem("status", sidebar.classList.contains("close") ? "close" : "open");
         });
-
-        // Special handling for delete buttons
-        const deleteButtons = document.querySelectorAll('.delete-btn');
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                console.log('Delete button clicked:', this.name, this.value);
-                
-                // Add visual feedback
-                this.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    this.style.transform = '';
-                }, 150);
-            });
+        document.querySelectorAll('.global-message').forEach(function(m) {
+            setTimeout(function() { m.style.animation = 'fadeOut 0.5s'; setTimeout(function() { m.parentNode && m.parentNode.removeChild(m); }, 500); }, 5000);
         });
-
-        // Special handling for delete forms
-        const deleteForms = document.querySelectorAll('form[data-delete-form]');
-        deleteForms.forEach(form => {
-            form.addEventListener('submit', function(e) {
-                console.log('Delete form submitted:', this.getAttribute('data-delete-form'));
-                
-                // Don't prevent default, let the form submit normally
-                // But add some debugging
-                const formData = new FormData(this);
-                console.log('Form data:', Object.fromEntries(formData));
-            });
-        });
-
     });
 </script>
 
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600&display=swap');
-*{
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Poppins', sans-serif;
-}
-    /* Navigation styles */
-    nav .nav-links li a.active {
-        background: rgba(255, 255, 255, 0.2);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    nav .nav-links li a.active i,
-    nav .nav-links li a.active .link-name {
-        color: white;
-    }
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-
-th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: center;
-}
-
-th {
-    background-color: #f2f2f2;
-}
-
-/* Compact Table Styles */
-.table-container {
-    overflow-x: auto;
-    margin-bottom: 30px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.compact-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.compact-table th {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 12px 8px;
-    font-weight: 600;
-    text-align: center;
-    font-size: 0.9rem;
-    border: none;
-}
-
-.compact-table td {
-    padding: 10px 8px;
-    border-bottom: 1px solid #eee;
-    vertical-align: middle;
-    font-size: 0.9rem;
-}
-
-.compact-table tr:hover {
-    background-color: #f8f9fa;
-}
-
-.compact-table tr:last-child td {
-    border-bottom: none;
-}
-
-.cell-text {
-    font-weight: 500;
-    color: #333;
-}
-
-/* Action Buttons */
-.action-buttons {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
-    align-items: center;
-}
-
-.action-buttons button {
-    border: none;
-    cursor: pointer;
-    padding: 8px 10px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-    font-size: 0.85rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 36px;
-    height: 36px;
-    position: relative;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    font-weight: 600;
-}
-
-.action-buttons button i {
-    font-size: 16px;
-    margin: 0;
-}
-
-.action-buttons button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-.action-buttons button:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.btn-approve {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-    border: 1px solid #28a745;
-}
-
-.btn-approve:hover {
-    background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
-    border-color: #1e7e34;
-    color: white;
-}
-
-.btn-approve:active {
-    background: linear-gradient(135deg, #1e7e34 0%, #155724 100%);
-    transform: translateY(1px);
-}
-
-.btn-reject {
-    background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
-    color: white;
-    border: 1px solid #dc3545;
-}
-
-.btn-reject:hover {
-    background: linear-gradient(135deg, #c82333 0%, #c0392b 100%);
-    border-color: #c82333;
-    color: white;
-}
-
-.btn-reject:active {
-    background: linear-gradient(135deg, #bd2130 0%, #a93226 100%);
-    transform: translateY(1px);
-}
-
-.btn-view {
-    background: linear-gradient(135deg, #17a2b8 0%, #00bcd4 100%);
-    color: white;
-    border: 1px solid #17a2b8;
-}
-
-.btn-view:hover {
-    background: linear-gradient(135deg, #138496 0%, #0097a7 100%);
-    border-color: #138496;
-    color: white;
-}
-
-.btn-view:active {
-    background: linear-gradient(135deg, #117a8b 0%, #00838f 100%);
-    transform: translateY(1px);
-}
-
-/* Edit Button */
-.btn-edit {
-    background: linear-gradient(135deg, #17a2b8 0%, #00bcd4 100%);
-    color: white;
-    border: 1px solid #17a2b8;
-}
-
-.btn-edit:hover {
-    background: linear-gradient(135deg, #138496 0%, #0097a7 100%);
-    border-color: #138496;
-    color: white;
-}
-
-.btn-edit:active {
-    background: linear-gradient(135deg, #117a8b 0%, #00838f 100%);
-    transform: translateY(1px);
-}
-
-/* Button loading state */
-.action-buttons button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
-}
-
-/* No Data State */
-.no-data {
-    text-align: center !important;
-    color: #6c757d !important;
-    font-style: italic;
-    padding: 30px 20px !important;
-    background: #f8f9fa;
-}
-
-/* Status Badge Styles */
-.status-badge {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.status-badge.status-passed {
-    background: rgba(40, 167, 69, 0.1);
-    color: #28a745;
-    border: 1px solid rgba(40, 167, 69, 0.3);
-}
-
-.status-badge.status-failed {
-    background: rgba(220, 53, 69, 0.1);
-    color: #dc3545;
-    border: 1px solid rgba(220, 53, 69, 0.3);
-}
-
-.status-badge.status-incomplete {
-    background: rgba(23, 162, 184, 0.1);
-    color: #17a2b8;
-    border: 1px solid rgba(23, 162, 184, 0.3);
-}
-
-.status-badge.status-dropped {
-    background: rgba(108, 117, 125, 0.1);
-    color: #6c757d;
-    border: 1px solid rgba(108, 117, 125, 0.3);
-}
-
-.status-badge.status-in-progress {
-    background: rgba(255, 193, 7, 0.1);
-    color: #d39e00;
-    border: 1px solid rgba(255, 193, 7, 0.3);
-}
-
-/* Form Styles */
-.form-container {
-    background: white;
-    border-radius: 12px;
-    padding: 25px;
-    margin-bottom: 30px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border: 1px solid #e9ecef;
-}
-
-.appointment-form {
-    width: 100%;
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    align-items: end;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-}
-
-.form-group label {
-    font-weight: 600;
-    color: #495057;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.form-group label i {
-    color: #6c757d;
-    font-size: 0.85rem;
-}
-
-.form-group input {
-    padding: 10px 12px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
-    background: #f8f9fa;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: #667eea;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-group input:hover {
-    border-color: #ced4da;
-}
-
-.form-actions {
-    display: flex;
-    align-items: end;
-}
-
-.btn-submit {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-}
-
-.btn-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
-}
-
-.btn-submit:active {
-    transform: translateY(0);
-}
-
-/* Form responsiveness */
-@media (max-width: 768px) {
-    .form-grid {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-    
-    .form-container {
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    
-    .form-group input {
-        padding: 8px 10px;
-    }
-    
-    .btn-submit {
-        width: 100%;
-        justify-content: center;
-        padding: 14px 24px;
-    }
-}
-
-/* Responsive adjustments */
-@media (max-width: 1200px) {
-    .compact-table {
-        font-size: 0.8rem;
-    }
-    
-    .compact-table th,
-    .compact-table td {
-        padding: 8px 6px;
-    }
-}
-
-@media (max-width: 768px) {
-    .compact-table {
-        font-size: 0.75rem;
-    }
-    
-    .compact-table th,
-    .compact-table td {
-        padding: 6px 4px;
-    }
-    
-    .action-buttons button {
-        padding: 4px 6px;
-        min-width: 28px;
-        height: 28px;
-        font-size: 0.7rem;
-    }
-}
-.data-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px; /* Adjust spacing as needed */
-}
-
-.data {
-    flex: 1; /* Allows each data item to take equal space */
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start; /* Aligns titles and lists to the start */
-}
-
-.data-title {
-    font-weight: bold; /* Makes the title stand out */
-}
-
-.data-list {
-    margin-top: 5px; /* Adds space between title and list */
-}
-
-:root{
-    /* ===== Colors ===== */
-    --primary-color: #0E4BF1;
-    --panel-color: #FFF;
-    --text-color: #000;
-    --black-light-color: #707070;
-    --border-color: #e6e5e5;
-    --toggle-color: #DDD;
-    --box1-color: #4DA3FF;
-    --box2-color: #FFE6AC;
-    --box3-color: #E7D1FC;
-    --title-icon-color: #fff;
-    
-    /* ====== Transition ====== */
-    --tran-05: all 0.5s ease;
-    --tran-03: all 0.3s ease;
-    --tran-03: all 0.2s ease;
-}
-body{
-    min-height: 100vh;
-    background-color: var(--primary-color);
-}
-body.dark{
-    --primary-color: #3A3B3C;
-    --panel-color: #242526;
-    --text-color: #CCC;
-    --black-light-color: #CCC;
-    --border-color: #4D4C4C;
-    --toggle-color: #FFF;
-    --box1-color: #3A3B3C;
-    --box2-color: #3A3B3C;
-    --box3-color: #3A3B3C;
-    --title-icon-color: #CCC;
-}
-/* === Custom Scroll Bar CSS === */
-::-webkit-scrollbar {
-    width: 8px;
-}
-::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
-    border-radius: 12px;
-    transition: all 0.3s ease;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: #0b3cc1;
-}
-body.dark::-webkit-scrollbar-thumb:hover,
-body.dark .activity-data::-webkit-scrollbar-thumb:hover{
-    background: #3A3B3C;
-}
-nav{
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 250px;
-    padding: 10px 14px;
-    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-    box-shadow: 4px 0 15px rgba(102, 126, 234, 0.3);
-    transition: var(--tran-05);
-    z-index: 100;
-}
-nav.close{
-    width: 73px;
-}
-nav .logo-name{
-    display: flex;
-    align-items: center;
-    padding: 15px 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    margin-bottom: 15px;
-}
-nav .logo-image{
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-width: 45px;
-    border-radius: 12px;
-}
-nav .logo-image i{
-    font-size: 28px;
-    color: #fff;
-}
-nav .logo-name .logo_name{
-    font-size: 18px;
-    font-weight: 600;
-    color: #fff;
-    margin-left: 12px;
-    white-space: nowrap;
-    transition: opacity 0.3s ease;
-}
-
-nav .menu-items li a .link-name{
-    font-size: 15px;
-    font-weight: 400;
-    color: #ffffff;    
-    transition: var(--tran-05);
-}
-    font-weight: 600;
-    color: #ffffff;
-    margin-left: 14px;
-    transition: var(--tran-05);
-}
-nav.close .logo_name{
-    opacity: 0;
-    pointer-events: none;
-}
-nav .menu-items{
-    height: calc(100% - 70px);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    overflow-y: auto;
-}
-
-nav .menu-items::-webkit-scrollbar{
-    display: none;
-}
-.menu-items li{
-    list-style: none;
-}
-.nav-links li{
-    position: relative;
-    margin: 5px 0;
-}
-.menu-items li a{
-    display: flex;
-    align-items: center;
-    padding: 12px 15px;
-    text-decoration: none;
-    position: relative;
-    border-radius: 10px;
-    transition: all 0.3s ease;
-}
-.nav-links li a:hover:before{
-    content: "";
-    position: absolute;
-    left: -7px;
-    height: 5px;
-    width: 5px;
-    border-radius: 50%;
-    background-color: #ffffff;
-}
-body.dark li a:hover:before{
-    background-color: var(--text-color);
-}
-.menu-items li a i{
-    font-size: 24px;
-    min-width: 45px;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
-}
-.menu-items li a .link-name{
-    font-size: 18px;
-    font-weight: 400;
-    color: #ffffff;    
-    transition: var(--tran-05);
-}
-nav.close li a .link-name{
-    opacity: 0;
-    pointer-events: none;
-}
-.nav-links li a:hover i,
-.nav-links li a:hover .link-name{
-    color: #ffffff;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-}
-.nav-links li a:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateX(5px);
-}
-body.dark .nav-links li a:hover i,
-body.dark .nav-links li a:hover .link-name{
-    color: #ffffff;
-}
-.menu-items .logout-mode{
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    padding-top: 15px;
-}
-.menu-items .mode{
-    display: flex;
-    align-items: center;
-    white-space: nowrap;
-}
-.menu-items .mode-toggle{
-    position: absolute;
-    right: 14px;
-    height: 50px;
-    min-width: 45px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-.mode-toggle .switch{
-    position: relative;
-    display: inline-block;
-    height: 22px;
-    width: 40px;
-    border-radius: 25px;
-    background-color: var(--toggle-color);
-}
-.switch:before{
-    content: "";
-    position: absolute;
-    left: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 15px;
-    width: 15px;
-    background-color: var(--panel-color);
-    border-radius: 50%;
-    transition: var(--tran-03);
-}
-body.dark .switch:before{
-    left: 20px;
-}
-.dashboard{
-    position: relative;
-    left: 250px;
-    background-color: var(--panel-color);
-    min-height: 100vh;
-    width: calc(100% - 250px);
-    padding: 10px 14px;
-    transition: var(--tran-05);
-}
-nav.close ~ .dashboard{
-    left: 73px;
-    width: calc(100% - 73px);
-}
-.dashboard .top{
-    position: fixed;
-    top: 0;
-    left: 250px;
-    display: flex;
-    width: calc(100% - 250px);
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    background-color: var(--panel-color);
-    transition: var(--tran-05);
-    z-index: 10;
-}
-nav.close ~ .dashboard .top{
-    left: 73px;
-    width: calc(100% - 73px);
-}
-.dashboard .top .sidebar-toggle{
-    font-size: 26px;
-    color: var(--text-color);
-    cursor: pointer;
-}
-.dashboard .top .search-box{
-    position: relative;
-    height: 45px;
-    max-width: 600px;
-    width: 100%;
-    margin: 0 30px;
-}
-.top .search-box input{
-    position: absolute;
-    border: 1px solid var(--border-color);
-    background-color: var(--panel-color);
-    padding: 0 25px 0 50px;
-    border-radius: 5px;
-    height: 100%;
-    width: 100%;
-    color: var(--text-color);
-    font-size: 15px;
-    font-weight: 400;
-    outline: none;
-}
-.top .search-box i{
-    position: absolute;
-    left: 15px;
-    font-size: 22px;
-    z-index: 10;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--black-light-color);
-}
-.top img{
-    width: 40px;
-    border-radius: 50%;
-}
-
-.dash-content .title{
-    display: flex;
-    align-items: center;
-    margin: 30px 0 20px 0;
-}
-.dash-content .title i{
-    position: relative;
-    height: 30px;
-    width: 30px;
-    background-color: var(--primary-color);
-    border-radius: 6px;
-    color: var(--title-icon-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-}
-.dash-content .title .text{
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-color);
-    margin-left: 8px;
-}
-.dash-content .boxes{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-}
-.dash-content .boxes .box{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    border-radius: 12px;
-    width: calc(100% / 3 - 15px);
-    padding: 15px 20px;
-    background-color: var(--box1-color);
-    transition: var(--tran-05);
-}
-.boxes .box i{
-    font-size: 35px;
-    color: var(--text-color);
-}
-.boxes .box .text{
-    white-space: nowrap;
-    font-size: 18px;
-    font-weight: 500;
-    color: var(--text-color);
-}
-.boxes .box .number{
-    font-size: 40px;
-    font-weight: 500;
-    color: var(--text-color);
-}
-.boxes .box.box2{
-    background-color: var(--box2-color);
-}
-.boxes .box.box3{
-    background-color: var(--box3-color);
-}
-.dash-content .activity .activity-data{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-}
-.activity .activity-data{
-    display: flex;
-}
-.activity-data .data{
-    display: flex;
-    flex-direction: column;
-    margin: 0 15px;
-}
-.activity-data .data-title{
-    font-size: 20px;
-    font-weight: 500;
-    color: var(--text-color);
-}
-.activity-data .data .data-list{
-    font-size: 18px;
-    font-weight: 400;
-    margin-top: 20px;
-    white-space: nowrap;
-    color: var(--text-color);
-}
-@media (max-width: 1000px) {
-    nav{
-        width: 73px;
-    }
-    nav.close{
-        width: 250px;
-    }
-    nav .logo_name{
-        opacity: 0;
-        pointer-events: none;
-    }
-    nav.close .logo_name{
-        opacity: 1;
-        pointer-events: auto;
-    }
-    nav li a .link-name{
-        opacity: 0;
-        pointer-events: none;
-    }
-    nav.close li a .link-name{
-        opacity: 1;
-        pointer-events: auto;
-    }
-    nav ~ .dashboard{
-        left: 73px;
-        width: calc(100% - 73px);
-    }
-    nav.close ~ .dashboard{
-        left: 250px;
-        width: calc(100% - 250px);
-    }
-    nav ~ .dashboard .top{
-        left: 73px;
-        width: calc(100% - 73px);
-    }
-    nav.close ~ .dashboard .top{
-        left: 250px;
-        width: calc(100% - 250px);
-    }
-    .activity .activity-data{
-        overflow-X: scroll;
-    }
-}
-@media (max-width: 780px) {
-    .dash-content .boxes .box{
-        width: calc(100% / 2 - 15px);
-        margin-top: 15px;
-    }
-}
-@media (max-width: 560px) {
-    .dash-content .boxes .box{
-        width: 100% ;
-    }
-}
-@media (max-width: 400px) {
-    nav{
-        width: 0px;
-    }
-    nav.close{
-        width: 73px;
-    }
-    nav .logo_name{
-        opacity: 0;
-        pointer-events: none;
-    }
-    nav.close .logo_name{
-        opacity: 0;
-        pointer-events: none;
-    }
-    nav li a .link-name{
-        opacity: 0;
-        pointer-events: none;
-    }
-    nav.close li a .link-name{
-        opacity: 0;
-        pointer-events: none;
-    }
-    nav ~ .dashboard{
-        left: 0;
-        width: 100%;
-    }
-    nav.close ~ .dashboard{
-        left: 73px;
-        width: calc(100% - 73px);
-    }
-    nav ~ .dashboard .top{
-        left: 0;
-        width: 100%;
-    }
-    nav.close ~ .dashboard .top{
-        left: 0;
-        width: 100%;
-    }
-}
-
-/* Global Message Styles */
-@keyframes slideDown {
-    from {
-        transform: translateY(-100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-@keyframes fadeOut {
-    from {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    to {
-        opacity: 0;
-        transform: translateY(-100%);
-    }
-}
-
-.global-message {
-    animation: slideDown 0.8s ease-out;
-    position: relative;
-    z-index: 1000;
-    margin-top: 80px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-left: 4px solid;
-}
-
-.global-message.message {
-    border-left-color: #4CAF50;
-    background: rgba(76, 175, 80, 0.1);
-}
-
-.global-message.error-message {
-    border-left-color: #f44336;
-    background: rgba(244, 67, 54, 0.1);
-}
-
-.messages-container {
-    position: relative;
-    z-index: 1000;
-}
-
-/* Responsive message positioning */
-@media (max-width: 768px) {
-    .global-message {
-        margin-top: 70px;
-        margin-left: 10px;
-        margin-right: 10px;
-    }
-}
-
-
-
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif}
+nav .nav-links li a.active{background:rgba(255,255,255,0.2);box-shadow:0 4px 10px rgba(0,0,0,0.1)}
+nav .nav-links li a.active i,nav .nav-links li a.active .link-name{color:white}
+.table-container{overflow-x:auto;margin-bottom:30px;border-radius:12px;box-shadow:0 2px 15px rgba(0,0,0,0.08)}
+.compact-table{width:100%;border-collapse:collapse;font-size:0.9rem;background:white;border-radius:12px;overflow:hidden}
+.compact-table thead{position:sticky;top:0;z-index:10}
+.compact-table th{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:14px 10px;font-weight:600;text-align:center;font-size:0.85rem;border:none;white-space:nowrap}
+.compact-table th:first-child{border-top-left-radius:12px}
+.compact-table th:last-child{border-top-right-radius:12px}
+.compact-table td{padding:12px 10px;border-bottom:1px solid #eee;vertical-align:middle;font-size:0.85rem;background:#fff}
+.compact-table tbody tr{transition:all 0.2s ease}
+.compact-table tbody tr:hover{background-color:#f0f4ff}
+.compact-table tbody tr:last-child td:first-child{border-bottom-left-radius:12px}
+.compact-table tbody tr:last-child td:last-child{border-bottom-right-radius:12px}
+.no-data{text-align:center;color:#6c757d;font-style:italic;padding:30px 20px;background:#f8f9fa}
+.no-data i{font-size:2.5rem;color:#dee2e6;margin-bottom:10px;display:block}
+.no-data p:last-child{font-size:0.85rem;color:#6c757d}
+.status-badge{padding:6px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;text-transform:uppercase}
+.status-approved{background:rgba(40,167,69,0.1);color:#28a745;border:1px solid rgba(40,167,69,0.3)}
+.status-rejected{background:rgba(220,53,69,0.1);color:#dc3545;border:1px solid rgba(220,53,69,0.3)}
+.status-pending{background:rgba(255,193,7,0.1);color:#ffc107;border:1px solid rgba(255,193,7,0.3)}
+.status-incomplete{background:rgba(23,162,184,0.1);color:#17a2b8;border:1px solid rgba(23,162,184,0.3)}
+.btn-action{transition:all 0.3s ease;border:none;cursor:pointer;text-decoration:none;padding:8px 14px;border-radius:8px;background:#17a2b8;color:white;font-size:0.85rem;display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.btn-action:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+.btn-action:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+.btn-view{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+.btn-view:hover{background:linear-gradient(135deg,#5a6fd1 0%,#6a4190 100%)}
+.btn-save{background:linear-gradient(135deg,#28a745 0%,#20c997 100%)}
+.btn-save:hover{background:linear-gradient(135deg,#218838 0%,#1db586 100%)}
+.btn-add:hover{background:#218838}
+.btn-close{background:linear-gradient(135deg,#6c757d 0%,#5a6268 100%);border-radius:8px;padding:10px 24px;font-size:0.9rem}
+.btn-close:hover{background:linear-gradient(135deg,#5a6268 0%,#4e555b 100%);transform:translateY(-2px)}
+.student-name div:first-child{font-weight:600}
+.student-name .username{font-size:0.75rem;color:#6c757d;font-family:monospace;margin-top:2px}
+.actions-cell{text-align:center;white-space:nowrap}
+body{min-height:100vh;background-color:#0E4BF1}
+nav{position:fixed;top:0;left:0;height:100%;width:250px;padding:10px 14px;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%);box-shadow:4px 0 15px rgba(102,126,234,0.3);z-index:100}
+nav.close{width:73px}
+nav .logo-name{display:flex;align-items:center;padding:15px 10px;border-bottom:1px solid rgba(255,255,255,0.2);margin-bottom:15px}
+nav .logo-name .logo_name{font-size:18px;font-weight:600;color:#fff;margin-left:12px;white-space:nowrap}
+nav .menu-items{height:calc(100% - 70px);display:flex;flex-direction:column;justify-content:space-between;overflow-y:auto}
+.menu-items li{list-style:none}
+.nav-links li{position:relative;margin:5px 0}
+.menu-items li a{display:flex;align-items:center;padding:12px 15px;text-decoration:none;position:relative;border-radius:10px;transition:all 0.3s ease}
+.menu-items li a i{font-size:24px;min-width:45px;height:100%;display:flex;align-items:center;justify-content:center;color:#ffffff}
+.menu-items li a .link-name{font-size:18px;font-weight:400;color:#ffffff}
+.menu-items .logout-mode{border-top:1px solid rgba(255,255,255,0.2);padding-top:15px}
+.dashboard{position:relative;left:250px;background-color:#FFF;min-height:100vh;width:calc(100% - 250px);padding:10px 14px;transition:all 0.5s ease}
+nav.close~.dashboard{left:73px;width:calc(100% - 73px)}
+.dashboard .top{position:fixed;top:0;left:250px;display:flex;width:calc(100% - 250px);justify-content:space-between;align-items:center;padding:10px 14px;background-color:#FFF;z-index:10}
+nav.close~.dashboard .top{left:73px;width:calc(100% - 73px)}
+.dashboard .top .sidebar-toggle{font-size:26px;color:#000;cursor:pointer}
+.dash-content .title{display:flex;align-items:center;margin:30px 0 20px 0}
+.dash-content .title i{position:relative;height:30px;width:30px;background-color:#0E4BF1;border-radius:6px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px}
+.dash-content .title .text{font-size:18px;font-weight:600;color:#000;margin-left:8px}
+@keyframes fadeOut{from{opacity:1}to{opacity:0;transform:translateY(-100%)}}
+.global-message{position:relative;z-index:1000;margin:80px 20px 20px 20px;padding:16px 24px;border-radius:8px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);border-left:5px solid}
+.global-message.message{background:linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);border-left-color:#28a745}
+.global-message.error-message{background:linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);border-left-color:#dc3545}
+.global-message i{font-size:24px;flex-shrink:0}
+.global-message.message i{color:#28a745}
+.global-message.error-message i{color:#dc3545}
+.global-message span{font-weight:500}
+.global-message.message span{color:#155724}
+.global-message.error-message span{color:#721c24}
+.messages-container{position:relative;z-index:1000}
+/* Modal Styles */
+.modal{display:none;position:fixed;z-index:2000;left:0;top:0;width:100%;height:100%;overflow:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);background-color:rgba(0,0,0,0.6);animation:modalFadeIn 0.4s ease}
+@keyframes modalFadeIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+.modal-content{background-color:#fff;margin:2% auto;padding:0;border:none;width:95%;max-width:1200px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;animation:slideIn 0.4s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(-30px)}to{opacity:1;transform:translateY(0)}}
+.modal-content.modal-large{max-width:1300px}
+.modal-header{background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);padding:20px 25px;display:flex;justify-content:space-between;align-items:center;margin-bottom:0}
+.modal-header-title{display:flex;align-items:center;gap:15px}
+.modal-header-title i{color:rgba(255,255,255,0.9);font-size:28px}
+.modal-header-title h2{margin:0;color:#fff;font-size:1.5rem;font-weight:600}
+.modal-header-actions{display:flex;align-items:center;gap:10px}
+.modal-close-btn{background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:24px;width:40px;height:40px;border-radius:50%;cursor:pointer;transition:all 0.3s ease;display:flex;align-items:center;justify-content:center}
+.modal-close-btn:hover{background:rgba(255,255,255,0.3);transform:rotate(90deg)}
+.modal-body{padding:20px 25px 25px}
+.student-info-card{background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border-radius:12px;padding:18px 22px;margin-bottom:20px;color:white;display:none;box-shadow:0 4px 15px rgba(102,126,234,0.3)}
+.student-info-content{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.student-avatar{width:55px;height:55px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px}
+.student-details h3{margin:0;font-size:1.25rem;font-weight:600}
+.student-details p{margin:4px 0 0 0;opacity:0.9;font-size:0.9rem}
+.student-meta{margin-left:auto;display:flex;gap:30px;flex-wrap:wrap}
+.meta-item{text-align:center;padding:8px 15px;background:rgba(255,255,255,0.15);border-radius:8px}
+.meta-label{display:block;font-size:0.75rem;opacity:0.9;text-transform:uppercase;letter-spacing:0.5px}
+.meta-value{display:block;font-weight:600;margin-top:4px;font-size:1rem}
+.grades-table-container{max-height:450px;overflow-y:auto;border-radius:12px;border:1px solid #e0e0e0}
+.grades-table-container::-webkit-scrollbar{width:10px}
+.grades-table-container::-webkit-scrollbar-track{background:#f1f1f1;border-radius:5px}
+.grades-table-container::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#667eea 0%,#764ba2 100%);border-radius:5px}
+.grades-table-container::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#5a6fd1 0%,#6a4190 100%)}
+.summary-section{margin-top:20px;padding:20px;background:#fff;border-radius:12px;border:1px solid #e0e0e0;box-shadow:0 2px 8px rgba(0,0,0,0.05);display:none}
+.summary-section h4{margin:0 0 16px 0;color:#333;font-size:1.1rem;display:flex;align-items:center;gap:10px}
+.summary-section h4 i{color:#667eea}
+.summary-stats{display:flex;gap:30px;flex-wrap:wrap}
+.stat-item{text-align:center;padding:12px 20px;background:#f8f9fa;border-radius:10px;min-width:100px;transition:transform 0.3s ease, box-shadow 0.3s ease}
+.stat-item:hover{transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,0,0,0.1)}
+.stat-label{display:block;font-size:0.8rem;color:#6c757d;text-transform:uppercase;letter-spacing:0.5px}
+.stat-value{display:block;font-size:1.5rem;font-weight:700;color:#333;margin-top:6px}
+.stat-item.passed{background:rgba(40,167,69,0.08);border:1px solid rgba(40,167,69,0.2)}
+.stat-item.passed .stat-label{color:#28a745}
+.stat-item.passed .stat-value{color:#28a745}
+.stat-item.failed{background:rgba(220,53,69,0.08);border:1px solid rgba(220,53,69,0.2)}
+.stat-item.failed .stat-label{color:#dc3545}
+.stat-item.failed .stat-value{color:#dc3545}
+.stat-item.progress{background:255,193,7,0.08;border:1px solid rgba(255,193,7,0.2)}
+.stat-item.progress .stat-label{color:#ffc107}
+.stat-item.progress .stat-value{color:#ffc107}
+.modal-footer{margin-top:25px;padding-top:20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:12px}
+.btn-close{background:#6c757d;border-radius:8px;padding:10px 24px;font-size:0.9rem}
+.btn-close:hover{background:#5a6268}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* Grade input styles */
+.grade-input{width:100%;padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;transition:border-color 0.3s, box-shadow 0.3s}
+.grade-input:focus{outline:none;border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,0.2)}
+.grade-input[readonly]{background-color:#f8f9fa;color:#6c757d;cursor:not-allowed}
+.grade-input[type="number"]{text-align:center}
+.grade-input[type="text"]{text-align:left}
+.semester-select{cursor:pointer}
+.remarks-input{width:120px}
+.subject-cell{font-weight:500}
+.subject-name-input{font-weight:500}
+.subject-select{min-width:180px}
+.average-display{color:#667eea;font-size:1rem}
+.actions-cell .btn-action{font-size:0.9rem;padding:8px 12px}
+.status-indicator{display:block;margin-top:5px;min-height:20px}
+.status-msg{font-size:0.75rem;padding:3px 8px;border-radius:4px;display:inline-block}
+.status-msg.success{background:rgba(40,167,69,0.1);color:#28a745}
+.status-msg.error{background:rgba(220,53,69,0.1);color:#dc3545}
+/* Success Popup Styles */
+.success-popup{display:none;position:fixed;z-index:3000;left:0;top:0;width:100%;height:100%;background-color:rgba(0,0,0,0.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:fadeIn 0.3s ease}
+.success-popup-content{background:#fff;margin:15% auto;padding:0;border-radius:12px;width:90%;max-width:400px;box-shadow:0 10px 30px rgba(0,0,0,0.3);animation:slideIn 0.3s ease}
+.success-popup-header{background:linear-gradient(135deg,#28a745 0%,#20c997 100%);color:#fff;padding:20px;text-align:center;border-radius:12px 12px 0 0}
+.success-popup-header i{font-size:24px;margin-bottom:8px;display:block}
+.success-popup-header h3{margin:0;font-size:1.2rem;font-weight:600}
+.success-popup-body{padding:25px;text-align:center}
+.success-popup-body p{margin:0;font-size:1rem;color:#333;line-height:1.5}
+.success-popup-footer{padding:15px 25px;border-top:1px solid #eee;text-align:center;background:#f8f9fa;border-radius:0 0 12px 12px}
+.success-popup-footer .btn-action{background:#28a745;border-radius:6px;padding:8px 20px;font-size:0.9rem}
+.success-popup-footer .btn-action:hover{background:#218838;transform:translateY(-1px)}
+
+/* Error Popup Styles */
+.error-popup{display:none;position:fixed;z-index:3000;left:0;top:0;width:100%;height:100%;background-color:rgba(0,0,0,0.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:fadeIn 0.3s ease}
+.error-popup-content{background:#fff;margin:15% auto;padding:0;border-radius:12px;width:90%;max-width:400px;box-shadow:0 10px 30px rgba(0,0,0,0.3);animation:slideIn 0.3s ease}
+.error-popup-header{background:linear-gradient(135deg,#dc3545 0%,#c82333 100%);color:#fff;padding:20px;text-align:center;border-radius:12px 12px 0 0}
+.error-popup-header i{font-size:24px;margin-bottom:8px;display:block}
+.error-popup-header h3{margin:0;font-size:1.2rem;font-weight:600}
+.error-popup-body{padding:25px;text-align:center}
+.error-popup-body p{margin:0;font-size:1rem;color:#333;line-height:1.5}
+.error-popup-footer{padding:15px 25px;border-top:1px solid #eee;text-align:center;background:#f8f9fa;border-radius:0 0 12px 12px}
+.error-popup-footer .btn-action{background:#dc3545;border-radius:6px;padding:8px 20px;font-size:0.9rem}
+.error-popup-footer .btn-action:hover{background:#c82333;transform:translateY(-1px)}
+@media(max-width:1000px){nav{width:73px}nav.close{width:250px}nav~.dashboard{left:73px;width:calc(100% - 73px)}nav.close~.dashboard{left:250px;width:calc(100% - 250px)}nav~.dashboard .top{left:73px;width:calc(100% - 73px)}nav.close~.dashboard .top{left:250px;width:calc(100% - 250px)}}
+@media(max-width:768px){.global-message{margin-top:70px;margin-left:10px;margin-right:10px}.compact-table{font-size:0.75rem}.compact-table th,.compact-table td{padding:6px 4px}.grade-input{padding:4px 6px;font-size:0.75rem}.remarks-input{width:80px}.modal-content{width:95%;margin:10% auto}}
 </style>
 
-<script>
-// Edit Grade Modal Functions
-function editGrade(id) {
-    // Show loading state
-    const modal = document.getElementById('editGradeModal');
-    const modalContent = document.getElementById('editGradeContent');
-    modalContent.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #667eea;"></i><p style="margin-top: 20px; color: #666;">Loading grade data...</p></div>';
-    modal.style.display = 'flex';
-    
-    // Fetch grade data via AJAX
-    fetch('getGradeData.php?grade_id=' + id)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                populateEditForm(data.grade);
-            } else {
-                modalContent.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-circle" style="font-size: 48px; color: #dc3545;"></i><p style="margin-top: 20px; color: #666;">Error: ' + data.message + '</p><button onclick="closeEditModal()" style="margin-top: 20px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button></div>';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching grade data:', error);
-            modalContent.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #ffc107;"></i><p style="margin-top: 20px; color: #666;">Error loading grade data. Please try again.</p><button onclick="closeEditModal()" style="margin-top: 20px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button></div>';
-        });
-}
+</body>
+</html>
 
-function populateEditForm(grade) {
-    const modalContent = document.getElementById('editGradeContent');
-    
-    // Dynamically generate the form HTML
-    const formHTML = `
-        <form id="editGradeForm" method="post" action="editGrade.php">
-            <input type="hidden" id="edit_grade_id" name="grade_id" value="${grade.id}">
-            
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <p style="margin: 0 0 8px 0; font-size: 0.9rem;"><i class="fas fa-user" style="color: #667eea;"></i> <strong>${grade.first_name} ${grade.last_name}</strong> (${grade.student_username})</p>
-                <p style="margin: 0; font-size: 0.9rem;"><i class="fas fa-book" style="color: #667eea;"></i> <strong>${grade.subject_code}</strong> - ${grade.subject_name || 'N/A'}</p>
-            </div>
-            
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="edit_semester"><i class="fas fa-clock"></i> Semester</label>
-                    <select id="edit_semester" name="semester" required style="width: 100%; padding: 10px 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.9rem;">
-                        <option value="">Select Semester</option>
-                        <option value="1st Semester" ${grade.semester === '1st Semester' ? 'selected' : ''}>1st Semester</option>
-                        <option value="2nd Semester" ${grade.semester === '2nd Semester' ? 'selected' : ''}>2nd Semester</option>
-                        <option value="Summer" ${grade.semester === 'Summer' ? 'selected' : ''}>Summer</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="edit_prelim_grade"><i class="fas fa-star"></i> Prelim Grade</label>
-                    <input type="number" id="edit_prelim_grade" name="prelim_grade" min="0" max="100" step="0.01" required value="${parseFloat(grade.prelim_grade)}" style="width: 100%; padding: 10px 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.9rem;">
-                </div>
-                <div class="form-group">
-                    <label for="edit_midterm_grade"><i class="fas fa-star"></i> Midterm Grade</label>
-                    <input type="number" id="edit_midterm_grade" name="midterm_grade" min="0" max="100" step="0.01" required value="${parseFloat(grade.midterm_grade)}" style="width: 100%; padding: 10px 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.9rem;">
-                </div>
-                <div class="form-group">
-                    <label for="edit_final_grade"><i class="fas fa-star"></i> Final Grade</label>
-                    <input type="number" id="edit_final_grade" name="final_grade" min="0" max="100" step="0.01" required value="${parseFloat(grade.final_grade)}" style="width: 100%; padding: 10px 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.9rem;">
-                </div>
-                <div class="form-group">
-                    <label for="edit_average"><i class="fas fa-graduation-cap"></i> Average</label>
-                    <input type="number" id="edit_average" name="average" min="0" max="100" step="0.01" readonly style="width: 100%; padding: 10px 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.9rem; background-color: #e9ecef; cursor: not-allowed;" value="${parseFloat(grade.average)}">
-                </div>
-                <div class="form-group">
-                    <label for="edit_status"><i class="fas fa-check-circle"></i> Status</label>
-                    <input type="text" id="edit_status" name="status" readonly style="width: 100%; padding: 10px 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.9rem; background-color: #e9ecef; cursor: not-allowed; font-weight: 600; color: #495057;" value="${grade.status}">
-                </div>
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <label for="edit_remarks"><i class="fas fa-comment"></i> Remarks</label>
-                    <input type="text" id="edit_remarks" name="remarks" placeholder="Optional remarks" style="width: 100%; padding: 10px 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.9rem;" value="${grade.remarks || ''}">
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                <button type="button" onclick="closeEditModal()" style="padding: 12px 24px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
-                <button type="submit" id="editSubmitBtn" style="padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;"><i class="fas fa-save"></i> Update Grade</button>
-            </div>
-        </form>
-    `;
-    
-    modalContent.innerHTML = formHTML;
-    
-    // Attach event listeners for real-time calculation
-    attachEditGradeListeners();
-}
-
-function attachEditGradeListeners() {
-    const prelimGrade = document.getElementById('edit_prelim_grade');
-    const midtermGrade = document.getElementById('edit_midterm_grade');
-    const finalGrade = document.getElementById('edit_final_grade');
-    const averageField = document.getElementById('edit_average');
-    const statusField = document.getElementById('edit_status');
-    const remarksField = document.getElementById('edit_remarks');
-    
-    function calculateEditStatusAndRemarks() {
-        const prelim = parseFloat(prelimGrade?.value) || 0;
-        const midterm = parseFloat(midtermGrade?.value) || 0;
-        const final = parseFloat(finalGrade?.value) || 0;
-        
-        let status = '';
-        let remarks = '';
-        
-        // Calculate average if at least one grade is entered
-        if (prelim > 0 || midterm > 0 || final > 0) {
-            const average = (prelim + midterm + final) / 3;
-            if (averageField) {
-                averageField.value = Math.round(average * 100) / 100;
-                
-                // Visual feedback
-                averageField.style.backgroundColor = '#e8f5e8';
-                setTimeout(() => {
-                    averageField.style.backgroundColor = '#e9ecef';
-                }, 500);
-            }
-        }
-        
-        // Determine status based on which grades are entered
-        if (prelim > 0 && midterm === 0 && final === 0) {
-            status = 'In Progress';
-            remarks = 'Grading in progress - Prelim: ' + prelim.toFixed(2);
-        } else if (prelim > 0 && midterm > 0 && final === 0) {
-            status = 'In Progress';
-            const currentAvg = (prelim + midterm) / 2;
-            remarks = 'Grading in progress - Current Avg: ' + currentAvg.toFixed(2) + '% (Final pending)';
-        } else if (prelim > 0 && midterm > 0 && final > 0) {
-            const average = (prelim + midterm + final) / 3;
-            
-            if (average >= 75) {
-                status = 'Passed';
-                remarks = 'Passed with ' + average.toFixed(2) + '% average';
-            } else {
-                status = 'Failed';
-                remarks = 'Failed with ' + average.toFixed(2) + '% average';
-            }
-        }
-        
-        if (statusField) {
-            statusField.value = status;
-            
-            // Visual feedback
-            statusField.style.backgroundColor = status === 'In Progress' ? '#fff3cd' : '#e8f5e8';
-            setTimeout(() => {
-                statusField.style.backgroundColor = '#e9ecef';
-            }, 500);
-        }
-        
-        if (remarksField) {
-            remarksField.value = remarks;
-            
-            // Visual feedback
-            remarksField.style.backgroundColor = '#e8f5e8';
-            setTimeout(() => {
-                remarksField.style.backgroundColor = '#fff';
-            }, 500);
-        }
-    }
-    
-    if (prelimGrade) {
-        prelimGrade.addEventListener('input', calculateEditStatusAndRemarks);
-    }
-    if (midtermGrade) {
-        midtermGrade.addEventListener('input', calculateEditStatusAndRemarks);
-    }
-    if (finalGrade) {
-        finalGrade.addEventListener('input', calculateEditStatusAndRemarks);
-    }
-    
-    // Initial calculation when form is loaded
-    setTimeout(() => {
-        calculateEditStatusAndRemarks();
-    }, 100);
-}
-
-function closeEditModal() {
-    document.getElementById('editGradeModal').style.display = 'none';
-}
-
-window.onclick = function(event) {
-    const modal = document.getElementById('editGradeModal');
-    if (event.target === modal) {
-        closeEditModal();
-    }
-}
-
-// Remove the old submitEditForm function - form now submits normally via PHP redirect
-function deleteGrade(id, student, subject) {
-    if (confirm('Are you sure you want to delete the grade for student "' + student + '" in subject "' + subject + '"? This action cannot be undone.')) {
-        // Create and submit a form to delete_grade.php
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'deleteGrade.php';
-        
-        const idInput = document.createElement('input');
-        idInput.type = 'hidden';
-        idInput.name = 'grade_id';
-        idInput.value = id;
-        
-        form.appendChild(idInput);
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-// Auto-hide global messages after 5 seconds
-document.addEventListener('DOMContentLoaded', function() {
-    const messageDivs = document.querySelectorAll('.global-message');
-    
-    messageDivs.forEach(messageDiv => {
-        const isError = messageDiv.classList.contains('error-message');
-        const timeout = isError ? 7000 : 5000; // Keep errors longer
-        
-        setTimeout(() => {
-            messageDiv.style.animation = 'fadeOut 0.5s ease-in';
-            setTimeout(() => {
-                if (messageDiv.parentNode) {
-                    messageDiv.parentNode.removeChild(messageDiv);
-                }
-            }, 500);
-        }, timeout);
-    });
-});
-
-// Enhanced form validation for grade form
-document.addEventListener('DOMContentLoaded', function() {
-    const gradeForm = document.querySelector('.grade-form');
-    if (gradeForm) {
-        gradeForm.addEventListener('submit', function(e) {
-            const submitBtn = this.querySelector('.btn-submit');
-            if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding Grade...';
-                submitBtn.disabled = true;
-                
-                // Re-enable after 3 seconds if form doesn't submit
-                setTimeout(() => {
-                    submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add Grade';
-                    submitBtn.disabled = false;
-                }, 3000);
-            }
-        });
-    }
-});
-
-// Automatic Average Calculation and Status/Remarks Generation
-document.addEventListener('DOMContentLoaded', function() {
-    // Get input elements for add form
-    const prelimGrade = document.getElementById('prelim_grade');
-    const midtermGrade = document.getElementById('midterm_grade');
-    const finalGrade = document.getElementById('final_grade');
-    const averageField = document.getElementById('average');
-    const statusField = document.getElementById('status');
-    const remarksField = document.getElementById('remarks');
-    
-    // Function to calculate status based on grades entered
-    function calculateStatusAndRemarks() {
-        const prelim = parseFloat(prelimGrade?.value) || 0;
-        const midterm = parseFloat(midtermGrade?.value) || 0;
-        const final = parseFloat(finalGrade?.value) || 0;
-        
-        let status = '';
-        let remarks = '';
-        
-        // Calculate average if at least one grade is entered
-        if (prelim > 0 || midterm > 0 || final > 0) {
-            const average = (prelim + midterm + final) / 3;
-            averageField.value = Math.round(average * 100) / 100;
-            
-            // Add visual feedback for average calculation
-            if (averageField) {
-                averageField.style.backgroundColor = '#e8f5e8';
-                setTimeout(() => {
-                    averageField.style.backgroundColor = '#e9ecef';
-                }, 1000);
-            }
-        }
-        
-        // Determine status based on which grades are entered
-        if (prelim > 0 && midterm === 0 && final === 0) {
-            // Only prelim entered
-            status = 'In Progress';
-            remarks = 'Grading in progress - Prelim: ' + prelim.toFixed(2);
-        } else if (prelim > 0 && midterm > 0 && final === 0) {
-            // Prelim and midterm entered
-            status = 'In Progress';
-            const currentAvg = (prelim + midterm) / 2;
-            remarks = 'Grading in progress - Current Avg: ' + currentAvg.toFixed(2) + '% (Final pending)';
-        } else if (prelim > 0 && midterm > 0 && final > 0) {
-            // All grades entered - determine Passed/Failed
-            const average = (prelim + midterm + final) / 3;
-            
-            if (average >= 75) {
-                status = 'Passed';
-                remarks = 'Passed with ' + average.toFixed(2) + '% average';
-            } else {
-                status = 'Failed';
-                remarks = 'Failed with ' + average.toFixed(2) + '% average';
-            }
-        }
-        
-        // Update status and remarks fields
-        if (statusField) {
-            statusField.value = status;
-            
-            // Add visual feedback for status change
-            statusField.style.backgroundColor = status === 'In Progress' ? '#fff3cd' : '#e8f5e8';
-            setTimeout(() => {
-                statusField.style.backgroundColor = '#e9ecef';
-            }, 1000);
-        }
-        
-        if (remarksField) {
-            remarksField.value = remarks;
-            
-            // Add visual feedback for remarks change
-            remarksField.style.backgroundColor = '#e8f5e8';
-            setTimeout(() => {
-                remarksField.style.backgroundColor = '#e9ecef';
-            }, 1000);
-        }
-    }
-    
-    // Add event listeners for grade inputs
-    if (prelimGrade) {
-        prelimGrade.addEventListener('input', calculateStatusAndRemarks);
-        prelimGrade.addEventListener('change', calculateStatusAndRemarks);
-    }
-    
-    if (midtermGrade) {
-        midtermGrade.addEventListener('input', calculateStatusAndRemarks);
-        midtermGrade.addEventListener('change', calculateStatusAndRemarks);
-    }
-    
-    if (finalGrade) {
-        finalGrade.addEventListener('input', calculateStatusAndRemarks);
-        finalGrade.addEventListener('change', calculateStatusAndRemarks);
-    }
-    
-    // Initial calculation when page loads
-    setTimeout(() => {
-        calculateStatusAndRemarks();
-    }, 500);
-});
-</script>
