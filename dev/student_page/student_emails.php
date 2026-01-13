@@ -51,10 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
     
     if (!empty($subject) && !empty($message)) {
         // Insert into student_messages table
-        $insert_sql = "INSERT INTO student_messages (student_id, student_name, subject, category, message, sent_at) 
-                       VALUES (?, ?, ?, ?, ?, NOW())";
+        $insert_sql = "INSERT INTO student_messages (student_id, student_name, email, subject, category, message, sent_at) 
+                       VALUES (?, ?, ?, ?, ?, ?, NOW())";
         $stmt = $conn->prepare($insert_sql);
-        $stmt->bind_param("issss", $student_id, $student_name, $subject, $category, $message);
+        $stmt->bind_param("isssss", $student_id, $student_name, $student_email, $subject, $category, $message);
         
         if ($stmt->execute()) {
             $_SESSION['message'] = "Message sent successfully!";

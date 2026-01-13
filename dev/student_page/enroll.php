@@ -62,6 +62,36 @@
         .username-feedback.checking i {
             color: #ffd43b;
         }
+        
+        /* Password Toggle Styles */
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        
+        .password-wrapper input {
+            padding-right: 45px;
+            width: 100%;
+        }
+        
+        .password-wrapper .fas,
+        .password-wrapper .fa-eye,
+        .password-wrapper .fa-eye-slash {
+            position: absolute;
+            right: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+            z-index: 10;
+        }
+        
+        .password-wrapper .fas:hover,
+        .password-wrapper .fa-eye:hover,
+        .password-wrapper .fa-eye-slash:hover {
+            color: rgba(255, 255, 255, 0.9);
+        }
     </style>
 </head>
 <body>
@@ -130,7 +160,10 @@
                             </div>
                             <div class="input-group">
                                 <label for="password">Password</label>
-                                <input type="password" name="password" id="password" placeholder="Enter password" required>
+                                <div class="password-wrapper">
+                                    <input type="password" name="password" id="enrollPassword" placeholder="Enter password" required autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');">
+                                    <i class="fas fa-eye" id="toggleEnrollPassword" onclick="togglePassword('enrollPassword', 'toggleEnrollPassword')"></i>
+                                </div>
                             </div>
                             <div class="input-group">
                                 <label for="email">Email</label>
@@ -172,8 +205,8 @@
                                 </div>
                             </div>
                             <div class="input-group">
-                                <label for="student_phone">Student Phone (09XXXXXXXXX)</label>
-                                <input type="tel" name="student_phone" id="student_phone" maxlength="11" placeholder="9123456789" required pattern="9[0-9]{9}" title="Please enter a valid 11-digit phone number starting with 9">
+                                <label for="student_phone">Student Phone (9XXXXXXXXXX)</label>
+                                <input type="tel" name="student_phone" id="student_phone" maxlength="11" placeholder="0912345678"  title="Please enter a valid 11-digit phone number starting with 9">
                             </div>
                             <div class="input-group">
                                 <label for="address">Student Address</label>
@@ -184,8 +217,8 @@
                                 <input type="text" name="guardian_name" id="guardian_name" placeholder="Enter guardian name" required>
                             </div>
                             <div class="input-group">
-                                <label for="guardian_phone">Guardian Phone (09XXXXXXXXX)</label>
-                                <input type="tel" name="guardian_phone" id="guardian_phone" maxlength="11" placeholder="9123456789" required pattern="9[0-9]{9}" title="Please enter a valid 11-digit phone number starting with 9">
+                                <label for="guardian_phone">Guardian Phone (9XXXXXXXXXX)</label>
+                                <input type="tel" name="guardian_phone" id="guardian_phone" maxlength="11" placeholder="9123456789" title="Please enter a valid 11-digit phone number starting with 9">
                             </div>
                             <div class="input-group">
                                 <label for="guardian_address">Guardian Address</label>
@@ -206,7 +239,7 @@
                                 </div>
                                 <div class="input-group">
                                     <label for="elem_year">Year Graduated</label>
-                                    <input type="text" name="elem_year" id="elem_year" maxlength="4" placeholder="e.g., 2015" required>
+                                    <input type="text" name="elem_year" id="elem_year" maxlength="4"placeholder="e.g., 2016" required>
                                 </div>
                             </div>
 
@@ -218,7 +251,7 @@
                                 </div>
                                 <div class="input-group">
                                     <label for="junior_year">Year Graduated</label>
-                                    <input type="text" name="junior_year" id="junior_year" maxlength="4" placeholder="e.g., 2019" required>
+                                    <input type="text" name="junior_year" id="junior_year" maxlength="4" placeholder="e.g., 2018" required>
                                 </div>
                             </div>
 
@@ -230,7 +263,7 @@
                                 </div>
                                 <div class="input-group">
                                     <label for="senior_year">Year Graduated</label>
-                                    <input type="text" name="senior_year" id="senior_year" maxlength="4" placeholder="e.g., 2021" required>
+                                    <input type="text" name="senior_year" id="senior_year" maxlength="4" placeholder="e.g., 2023" required>
                                 </div>
                                 <div class="input-group">
                                     <label for="strand">Strand</label>
@@ -574,7 +607,6 @@
             const feedbackDiv = document.getElementById('username-feedback');
             const previewSpan = document.getElementById('username-preview');
             
-            usernameInput.value = usernameInput.value.replace(/@/g, '');
             const username = usernameInput.value.trim();
             
             // Update preview
@@ -642,6 +674,22 @@
             }
         `;
         document.head.appendChild(style);
+        
+        // Password Toggle Function
+        function togglePassword(inputId, iconId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleIcon = document.getElementById(iconId);
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
     </script>
 </body>
 </html>

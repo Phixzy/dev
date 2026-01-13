@@ -72,7 +72,7 @@ function handleUpdateRequest() {
             if ($stmt->execute()) {
                 $rows_affected = $stmt->affected_rows;
                 error_log("Update executed successfully. Rows affected: $rows_affected");
-                setSuccessMessage("Appointment updated successfully! ($rows_affected row(s) updated)");
+                setSuccessMessage("Appointment updated successfully!");
             } else {
                 $error = $conn->error;
                 error_log("Execute failed: $error");

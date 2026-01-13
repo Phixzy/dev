@@ -80,6 +80,7 @@ CREATE TABLE `grades` (
   `average` decimal(5,2) NOT NULL,
   `status` enum('In Progress','Passed','Failed') NOT NULL,
   `remarks` text DEFAULT NULL,
+  `instructor_name` varchar(100) DEFAULT '',
   `created_by` varchar(100) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()

@@ -46,10 +46,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     switch ($action) {
         case 'approve':
+            // First, get student's course and year
+            $student_sql = "SELECT college_course, college_year FROM students WHERE id = ?";
+            $student_stmt = $conn->prepare($student_sql);
+            $student_stmt->bind_param("i", $id);
+            $student_stmt->execute();
+            $student_result = $student_stmt->get_result();
+            $student_data = $student_result->fetch_assoc();
+            $student_stmt->close();
+
+            if (!$student_data) {
+                $_SESSION['error'] = 'Student data not found.';
+                break;
+            }
+
+            $course = $student_data['college_course'];
+            $year = $student_data['college_year'];
+
+            // Check if the course has subjects
+            $subject_sql = "SELECT COUNT(*) as subject_count FROM subjects WHERE course = ? AND year_level = ?";
+            $subject_stmt = $conn->prepare($subject_sql);
+            $subject_stmt->bind_param("ss", $course, $year);
+            $subject_stmt->execute();
+            $subject_result = $subject_stmt->get_result();
+            $subject_data = $subject_result->fetch_assoc();
+            $subject_stmt->close();
+
+            if ($subject_data['subject_count'] == 0) {
+                $_SESSION['error'] = 'Cannot approve student. The enrolled course "' . htmlspecialchars($course) . '" for "' . htmlspecialchars($year) . '" does not have any subjects assigned.';
+                break;
+            }
+
+            // Proceed with approval if subjects exist
             $sql = "UPDATE students SET status = 'approved' WHERE id = ?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("i", $id);
-            
+
             if ($stmt->execute()) {
                 $_SESSION['message'] = 'Student approved successfully!';
             } else {

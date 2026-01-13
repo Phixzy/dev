@@ -117,8 +117,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_admin'])) {
             // Validate password
             if (empty($new_password)) {
                 setErrorMessage("Password is required!");
-            } elseif (strlen($new_password) < 6) {
-                setErrorMessage("Password must be at least 6 characters long!");
             } elseif ($new_password !== $confirm_password) {
                 setErrorMessage("Passwords do not match!");
             } else {
@@ -323,14 +321,12 @@ $conn->close();
                                 <label for="password"><i class="fas fa-lock"></i> Password</label>
                                 <input type="password" id="password" name="password" 
                                        placeholder="Enter password" 
-                                       minlength="6"
                                        required>
                             </div>
                             <div class="form-group">
                                 <label for="confirm_password"><i class="fas fa-lock"></i> Confirm Password</label>
                                 <input type="password" id="confirm_password" name="confirm_password" 
                                        placeholder="Confirm password" 
-                                       minlength="6"
                                        required>
                             </div>
                             <div class="form-actions">

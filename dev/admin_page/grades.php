@@ -233,11 +233,9 @@ $conn->close();
             .then(gradesData => {
                 console.log('Grades Data:', JSON.stringify(gradesData, null, 2));
                 
-                const tbody = document.getElementById('gradesTableBody');
-                
                 if (gradesData.error) {
                     console.log('Error from API:', gradesData.error);
-                    tbody.innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-exclamation-circle"></i><p>' + gradesData.error + '</p></td></tr>';
+                    document.getElementById('gradesTableBody').innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-exclamation-circle"></i><p>' + gradesData.error + '</p></td></tr>';
                     return;
                 }
                 
@@ -245,82 +243,209 @@ $conn->close();
                 console.log('Number of grades found:', existingGrades.length);
                 console.log('Student data:', gradesData.student);
                 
-                if (existingGrades.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-clipboard-list"></i><p>No grades found for this student (' + studentUsername + ').</p><p>Click Edit to add grades.</p></td></tr>';
-                    // Still show student info even if no grades
-                    if (gradesData.student) {
-                        const infoCard = document.getElementById('studentInfoCard');
-                        infoCard.innerHTML = '<div class="student-info-content"><div class="student-avatar"><i class="fas fa-user"></i></div><div class="student-details"><h3>' + gradesData.student.first_name + ' ' + gradesData.student.last_name + '</h3><p>' + gradesData.student.username + '</p></div><div class="student-meta"><div class="meta-item"><span class="meta-label">Course</span><span class="meta-value">' + (gradesData.student.college_course || '-') + '</span></div><div class="meta-item"><span class="meta-label">Year Level</span><span class="meta-value">' + (gradesData.student.college_year || '-') + '</span></div></div></div>';
-                        infoCard.style.display = 'block';
-                    }
-                    return;
-                } else {
-                    let html = '';
-                    existingGrades.forEach(function(grade) {
-                        const isNew = grade.isNew || !grade.id || grade.id.toString().startsWith('new_');
-                        const prelimVal = parseFloat(grade.prelim_grade) > 0 ? parseFloat(grade.prelim_grade).toFixed(2) : '';
-                        const midtermVal = parseFloat(grade.midterm_grade) > 0 ? parseFloat(grade.midterm_grade).toFixed(2) : '';
-                        const finalVal = parseFloat(grade.final_grade) > 0 ? parseFloat(grade.final_grade).toFixed(2) : '';
-                        const avgVal = parseFloat(grade.average) > 0 ? parseFloat(grade.average).toFixed(2) : (isNew ? '-' : '');
-                        const remarksVal = grade.remarks || (isNew ? '' : '');
-
-                        const isViewMode = mode === 'view';
-                        const readonlyAttr = isViewMode ? ' readonly' : '';
-                        const disabledAttr = isViewMode ? ' disabled' : '';
+                // Now fetch enrolled subjects to show all subjects (not just ones with grades)
+                fetch('getEnrolledSubjects.php?student_username=' + encodeURIComponent(studentUsername))
+                    .then(response => response.json())
+                    .then(subjectsData => {
+                        console.log('Enrolled Subjects Data:', JSON.stringify(subjectsData, null, 2));
                         
-                        const gradeId = grade.id || ('new_' + grade.subject_code + '_' + grade.semester.replace(' ', ''));
+                        const tbody = document.getElementById('gradesTableBody');
+                        const enrolledSubjects = subjectsData.subjects || [];
                         
-                        html += '<tr data-grade-id="' + gradeId + '"' + (isNew ? ' class="new-grade-row"' : '') + '>';
-                        html += '<td class="subject-cell">' + grade.subject_name + '</td>';
-                        html += '<td><input type="text" class="grade-input" id="subjectCode-' + gradeId + '" value="' + grade.subject_code + '"' + readonlyAttr + '></td>';
+                        // Merge existing grades with enrolled subjects
+                        // Create a map of existing grades by subject_code + semester
+                        const existingGradeMap = new Map();
+                        existingGrades.forEach(grade => {
+                            const key = grade.subject_code + '_' + grade.semester;
+                            existingGradeMap.set(key, grade);
+                        });
+                        
+                        // Build list of all rows: existing grades + enrolled subjects without grades
+                        let allRows = [...existingGrades];
+                        
+                        // Add enrolled subjects that don't have grades yet
+                        enrolledSubjects.forEach(subject => {
+                            // Check if this subject already has a grade for any semester
+                            const hasGrade = existingGrades.some(g => g.subject_code === subject.subject_code);
+                            
+                            if (!hasGrade) {
+                                // Create a placeholder row for this subject
+                                allRows.push({
+                                    subject_code: subject.subject_code,
+                                    subject_name: subject.subject_name,
+                                    instructor_name: subject.instructor_name || '',
+                                    semester: '1st Sem',
+                                    prelim_grade: 0,
+                                    midterm_grade: 0,
+                                    final_grade: 0,
+                                    average: 0,
+                                    remarks: '',
+                                    isEnrolledSubject: true // Flag to indicate this is an enrolled subject without grades
+                                });
+                            }
+                        });
+                        
+                        console.log('Total rows to display:', allRows.length);
+                        
+                        if (allRows.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-clipboard-list"></i><p>No subjects found for this student.</p><p>Subjects based on course/year will appear here.</p></td></tr>';
+                        } else {
+                            let html = '';
+                            allRows.forEach(function(grade) {
+                                const isNew = grade.isNew || !grade.id || grade.id.toString().startsWith('new_');
+                                const isEnrolledSubject = grade.isEnrolledSubject || false;
+                                
+                                const prelimVal = parseFloat(grade.prelim_grade) > 0 ? parseFloat(grade.prelim_grade).toFixed(2) : '';
+                                const midtermVal = parseFloat(grade.midterm_grade) > 0 ? parseFloat(grade.midterm_grade).toFixed(2) : '';
+                                const finalVal = parseFloat(grade.final_grade) > 0 ? parseFloat(grade.final_grade).toFixed(2) : '';
+                                const avgVal = parseFloat(grade.average) > 0 ? parseFloat(grade.average).toFixed(2) : (isNew ? '-' : '');
+                                const remarksVal = grade.remarks || (isNew ? '' : '');
 
-                        // Instructor name
-                        const instructorName = grade.instructor_name || '';
-                        html += '<td><input type="text" class="grade-input instructor-input" id="instructor-' + gradeId + '" value="' + instructorName + '" placeholder="-" readonly></td>';
+                                const isViewMode = mode === 'view';
+                                const readonlyAttr = isViewMode ? ' readonly' : '';
+                                const disabledAttr = isViewMode ? ' disabled' : '';
+                                
+                                // Generate unique grade ID
+                                let gradeId;
+                                if (isEnrolledSubject) {
+                                    // For enrolled subjects without grades, create a unique ID
+                                    gradeId = 'enrolled_' + grade.subject_code;
+                                } else {
+                                    gradeId = grade.id || ('new_' + grade.subject_code + '_' + grade.semester.replace(' ', ''));
+                                }
+                                
+                                const rowClass = isEnrolledSubject ? 'enrolled-subject-row' : (isNew ? 'new-grade-row' : '');
+                                
+                                html += '<tr data-grade-id="' + gradeId + '"' + (rowClass ? ' class="' + rowClass + '"' : '') + '>';
+                                html += '<td class="subject-cell">' + grade.subject_name + '</td>';
+                                html += '<td><input type="text" class="grade-input" id="subjectCode-' + gradeId + '" value="' + grade.subject_code + '"' + readonlyAttr + '></td>';
 
-                        // Semester dropdown
-                        html += '<td>';
-                        html += '<select class="grade-input semester-select" id="semester-' + gradeId + '"' + disabledAttr + ' onchange="calculateAverage(\'' + gradeId + '\')">';
-                        html += '<option value="1st Sem"' + (grade.semester === '1st Sem' ? ' selected' : '') + '>1st Sem</option>';
-                        html += '<option value="2nd Sem"' + (grade.semester === '2nd Sem' ? ' selected' : '') + '>2nd Sem</option>';
-                        html += '<option value="Summer"' + (grade.semester === 'Summer' ? ' selected' : '') + '>Summer</option>';
-                        html += '</select>';
-                        html += '</td>';
+                                // Instructor name
+                                const instructorName = grade.instructor_name || '';
+                                html += '<td><input type="text" class="grade-input instructor-input" id="instructor-' + gradeId + '" value="' + instructorName + '" placeholder="-" readonly></td>';
 
-                        // Editable grade inputs
-                        html += '<td><input type="number" class="grade-input prelim-input" min="0" max="100" step="0.01" value="' + prelimVal + '" placeholder="-"' + readonlyAttr + ' onchange="calculateAverage(\'' + gradeId + '\')" oninput="calculateAverage(\'' + gradeId + '\')"></td>';
-                        html += '<td><input type="number" class="grade-input midterm-input" min="0" max="100" step="0.01" value="' + midtermVal + '" placeholder="-"' + readonlyAttr + ' onchange="calculateAverage(\'' + gradeId + '\')" oninput="calculateAverage(\'' + gradeId + '\')"></td>';
-                        html += '<td><input type="number" class="grade-input final-input" min="0" max="100" step="0.01" value="' + finalVal + '" placeholder="-"' + readonlyAttr + ' onchange="calculateAverage(\'' + gradeId + '\')" oninput="calculateAverage(\'' + gradeId + '\')"></td>';
+                                // Semester dropdown
+                                html += '<td>';
+                                html += '<select class="grade-input semester-select" id="semester-' + gradeId + '"' + disabledAttr + ' onchange="calculateAverage(\'' + gradeId + '\')">';
+                                html += '<option value="1st Sem"' + (grade.semester === '1st Sem' ? ' selected' : '') + '>1st Sem</option>';
+                                html += '<option value="2nd Sem"' + (grade.semester === '2nd Sem' ? ' selected' : '') + '>2nd Sem</option>';
+                                html += '<option value="Summer"' + (grade.semester === 'Summer' ? ' selected' : '') + '>Summer</option>';
+                                html += '</select>';
+                                html += '</td>';
 
-                        // Read-only average
-                        html += '<td><strong class="average-display" id="avg-' + gradeId + '">' + avgVal + '</strong></td>';
+                                // Editable grade inputs
+                                html += '<td><input type="number" class="grade-input prelim-input" min="0" max="100" step="0.01" value="' + prelimVal + '" placeholder="-"' + readonlyAttr + ' onchange="calculateAverage(\'' + gradeId + '\')" oninput="calculateAverage(\'' + gradeId + '\')"></td>';
+                                html += '<td><input type="number" class="grade-input midterm-input" min="0" max="100" step="0.01" value="' + midtermVal + '" placeholder="-"' + readonlyAttr + ' onchange="calculateAverage(\'' + gradeId + '\')" oninput="calculateAverage(\'' + gradeId + '\')"></td>';
+                                html += '<td><input type="number" class="grade-input final-input" min="0" max="100" step="0.01" value="' + finalVal + '" placeholder="-"' + readonlyAttr + ' onchange="calculateAverage(\'' + gradeId + '\')" oninput="calculateAverage(\'' + gradeId + '\')"></td>';
 
-                        // Remarks
-                        html += '<td><input type="text" class="grade-input remarks-input" id="remarks-' + gradeId + '" value="' + remarksVal + '" placeholder="" readonly></td>';
+                                // Read-only average
+                                html += '<td><strong class="average-display" id="avg-' + gradeId + '">' + avgVal + '</strong></td>';
 
-                        // Action buttons
-                        html += '<td class="actions-cell">';
-                        if (mode === 'edit') {
-                            html += '<button class="btn-action btn-save" id="save-' + gradeId + '" onclick="saveGrade(\'' + gradeId + '\')" title="Save Changes"><i class="fas fa-save"></i></button>';
-                            html += '<span class="status-indicator status-' + gradeId + '"></span>';
+                                // Remarks
+                                html += '<td><input type="text" class="grade-input remarks-input" id="remarks-' + gradeId + '" value="' + remarksVal + '" placeholder="" readonly></td>';
+
+                                // Action buttons
+                                html += '<td class="actions-cell">';
+                                if (mode === 'edit') {
+                                    if (isEnrolledSubject) {
+                                        // For enrolled subjects without grades, use addNewGrade
+                                        html += '<button class="btn-action btn-add" id="save-' + gradeId + '" onclick="addGradeForEnrolledSubject(\'' + gradeId + '\')" title="Add Grade"><i class="fas fa-plus"></i> Add</button>';
+                                    } else {
+                                        html += '<button class="btn-action btn-save" id="save-' + gradeId + '" onclick="saveGrade(\'' + gradeId + '\')" title="Save Changes"><i class="fas fa-save"></i></button>';
+                                    }
+                                    html += '<span class="status-indicator status-' + gradeId + '"></span>';
+                                }
+                                html += '</td>';
+                                html += '</tr>';
+                            });
+                            tbody.innerHTML = html;
                         }
-                        html += '</td>';
-                        html += '</tr>';
+                        
+                        // Show student info
+                        if (gradesData.student) {
+                            const infoCard = document.getElementById('studentInfoCard');
+                            infoCard.innerHTML = '<div class="student-info-content"><div class="student-avatar"><i class="fas fa-user"></i></div><div class="student-details"><h3>' + gradesData.student.first_name + ' ' + gradesData.student.last_name + '</h3><p>' + gradesData.student.username + '</p></div><div class="student-meta"><div class="meta-item"><span class="meta-label">Course</span><span class="meta-value">' + (gradesData.student.college_course || '-') + '</span></div><div class="meta-item"><span class="meta-label">Year Level</span><span class="meta-value">' + (gradesData.student.college_year || '-') + '</span></div></div></div>';
+                            infoCard.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching enrolled subjects:', error);
+                        // Still show grades even if enrolled subjects fetch fails
+                        document.getElementById('gradesTableBody').innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-exclamation-circle"></i><p>Error loading subjects: ' + error.message + '</p><p>Existing grades shown below.</p></td></tr>';
                     });
-                    tbody.innerHTML = html;
-                }
-                
-                // Show student info
-                if (gradesData.student) {
-                    const infoCard = document.getElementById('studentInfoCard');
-                    infoCard.innerHTML = '<div class="student-info-content"><div class="student-avatar"><i class="fas fa-user"></i></div><div class="student-details"><h3>' + gradesData.student.first_name + ' ' + gradesData.student.last_name + '</h3><p>' + gradesData.student.username + '</p></div><div class="student-meta"><div class="meta-item"><span class="meta-label">Course</span><span class="meta-value">' + (gradesData.student.college_course || '-') + '</span></div><div class="meta-item"><span class="meta-label">Year Level</span><span class="meta-value">' + (gradesData.student.college_year || '-') + '</span></div></div></div>';
-                    infoCard.style.display = 'block';
-                }
             })
             .catch(error => {
                 console.error('Error fetching data:', error);
                 document.getElementById('gradesTableBody').innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-exclamation-circle"></i><p>Error loading grades: ' + error.message + '</p><p>Check browser console for details.</p></td></tr>';
             });
+    }
+    
+    // Add grade for enrolled subject (without existing grade record)
+    function addGradeForEnrolledSubject(gradeId) {
+        const row = document.querySelector('tr[data-grade-id="' + gradeId + '"]');
+        if (!row) return;
+        
+        const studentUsername = document.getElementById('currentStudentUsername').value;
+        const subjectCode = document.getElementById('subjectCode-' + gradeId).value;
+        const subjectName = row.querySelector('.subject-cell').textContent;
+        const semester = row.querySelector('.semester-select').value;
+        const prelim = parseFloat(row.querySelector('.prelim-input').value) || 0;
+        const midterm = parseFloat(row.querySelector('.midterm-input').value) || 0;
+        const final = parseFloat(row.querySelector('.final-input').value) || 0;
+        const remarks = row.querySelector('.remarks-input').value;
+        
+        // Validate grades
+        if (prelim < 0 || prelim > 100 || midterm < 0 || midterm > 100 || final < 0 || final > 100) {
+            showStatusMessage(gradeId, 'Grades must be between 0 and 100', 'error');
+            return;
+        }
+        
+        if (!subjectCode) {
+            showStatusMessage(gradeId, 'Subject code is required', 'error');
+            return;
+        }
+        
+        const saveBtn = document.getElementById('save-' + gradeId);
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+        }
+        
+        const formData = new FormData();
+        formData.append('student_username', studentUsername);
+        formData.append('subject_code', subjectCode);
+        formData.append('subject_name', subjectName);
+        formData.append('semester', semester);
+        formData.append('prelim_grade', prelim);
+        formData.append('midterm_grade', midterm);
+        formData.append('final_grade', final);
+        formData.append('remarks', remarks);
+        
+        fetch('addNewGrade.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showStatusMessage(gradeId, 'Grade added successfully!', 'success');
+                // Refresh the grades table
+                const username = document.getElementById('currentStudentUsername').value;
+                fetchGrades(encodeURIComponent(username), 'edit');
+            } else {
+                showStatusMessage(gradeId, data.message || 'Error adding grade', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error adding grade:', error);
+            showStatusMessage(gradeId, 'Error adding grade: ' + error.message, 'error');
+        })
+        .finally(() => {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-plus"></i> Add';
+            }
+        });
     }
 
     // Calculate average and determine status
@@ -792,6 +917,12 @@ nav.close~.dashboard .top{left:73px;width:calc(100% - 73px)}
 .status-msg{font-size:0.75rem;padding:3px 8px;border-radius:4px;display:inline-block}
 .status-msg.success{background:rgba(40,167,69,0.1);color:#28a745}
 .status-msg.error{background:rgba(220,53,69,0.1);color:#dc3545}
+/* Enrolled subjects without grades row style */
+.enrolled-subject-row{background-color:#f0f8ff !important}
+.enrolled-subject-row:hover{background-color:#e0efff !important}
+.enrolled-subject-row .subject-cell{color:#667eea;font-weight:600}
+.btn-add{background:linear-gradient(135deg,#17a2b8 0%,#138496 100%)}
+.btn-add:hover{background:linear-gradient(135deg,#138496 0%,#117a8b 100%)}
 /* Success Popup Styles */
 .success-popup{display:none;position:fixed;z-index:3000;left:0;top:0;width:100%;height:100%;background-color:rgba(0,0,0,0.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:fadeIn 0.3s ease}
 .success-popup-content{background:#fff;margin:15% auto;padding:0;border-radius:12px;width:90%;max-width:400px;box-shadow:0 10px 30px rgba(0,0,0,0.3);animation:slideIn 0.3s ease}

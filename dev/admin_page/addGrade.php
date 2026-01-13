@@ -32,6 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($prelim_grade > 0 && $midterm_grade > 0 && $final_grade === 0) {
         // Prelim and midterm entered
         $status = 'In Progress';
+    } elseif ($prelim_grade > 0 && $midterm_grade === 0 && $final_grade > 0) {
+        // Prelim and final entered but midterm missing
+        $status = 'Incomplete';
     } elseif ($prelim_grade > 0 && $midterm_grade > 0 && $final_grade > 0) {
         // All grades entered - determine Passed/Failed
         if ($average >= 75) {

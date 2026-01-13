@@ -1,24 +1,23 @@
+
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 session_start();
 
-// Database connection
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "dev";
+$students = [];
 
-$conn = new mysqli($servername, $username, $password, $dbname);
+require_once '../config/dbcon.php';
 
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    die("Database connection failed: " . $conn->connect_error);
 }
 
-// Fetch all students (excluding admin accounts)
-$students = [];
-$sql = "SELECT id, username, first_name, last_name, email, image, college_course, college_year, status, created_at 
+// Fetch all APPROVED students from database
+$sql = "SELECT id, username, first_name, last_name, email, image, college_course, college_year, status 
         FROM students 
-        WHERE username LIKE '%@student' 
-        ORDER BY created_at DESC";
+        WHERE status = 'APPROVED'
+        ORDER BY id DESC";
 $result = $conn->query($sql);
 
 if ($result && $result->num_rows > 0) {
@@ -26,8 +25,6 @@ if ($result && $result->num_rows > 0) {
         $students[] = $row;
     }
 }
-
-$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -46,7 +43,7 @@ $conn->close();
     <!-- Navigation Sidebar -->
     <nav>
         <div class="logo-name">
-                      <span class="logo_name"><?php echo htmlspecialchars($_SESSION['admin_username']); ?></span>
+                      <span class="logo_name"><?php echo isset($_SESSION['admin_username']) ? htmlspecialchars($_SESSION['admin_username']) : 'Admin'; ?></span>
 
         </div>
         <div class="menu-items">
@@ -119,6 +116,7 @@ $conn->close();
             unset($_SESSION['error']);
             echo '</div>';
         }
+        
         ?>
         
         <div class="activity">
@@ -178,67 +176,65 @@ $conn->close();
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (empty($students)): ?>
-                                <tr>
-                                    <td colspan="7" class="no-data" style="text-align: center; color: #6c757d; font-style: italic; padding: 50px 20px;">
-                                        <i class="fas fa-users" style="font-size: 3rem; color: #dee2e6; margin-bottom: 1rem;"></i>
-                                        <p>No student records found</p>
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($students as $student): ?>
-                                    <tr data-name="<?php echo strtolower($student['first_name'] . ' ' . $student['last_name']); ?>" 
-                                        data-username="<?php echo strtolower($student['username']); ?>"
-                                        data-course="<?php echo htmlspecialchars($student['college_course']); ?>"
-                                        data-year="<?php echo htmlspecialchars($student['college_year']); ?>">
-                                        <td style="text-align: center;">
-                                            <?php if (!empty($student['image']) && file_exists('../' . $student['image'])): ?>
-                                                <img src="../<?php echo htmlspecialchars($student['image']); ?>" 
-                                                     alt="Profile" 
-                                                     style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #667eea;">
-                                            <?php else: ?>
-                                                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                                                    <i class="fas fa-user" style="color: white; font-size: 20px;"></i>
-                                                </div>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <div style="font-weight: 600; color: #333;">
-                                                <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
-                                            </div>
-                                            <div style="font-size: 0.8rem; color: #6c757d;">
-                                                <?php echo htmlspecialchars($student['email']); ?>
-                                            </div>
-                                        </td>
-                                        <td style="font-family: monospace; font-size: 0.85rem;">
-                                            <?php echo htmlspecialchars($student['username']); ?>
-                                        </td>
-                                        <td>
-                                            <?php echo htmlspecialchars($student['college_course']); ?>
-                                        </td>
-                                        <td>
-                                            <?php echo htmlspecialchars($student['college_year']); ?>
-                                        </td>
-                                        <td style="text-align: center;">
-                                            <span class="status-badge status-<?php echo strtolower($student['status']); ?>">
-                                                <?php echo htmlspecialchars($student['status']); ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="action-buttons">
-                                                <button class="btn-view" title="View Details" onclick="window.location.href='view_student.php?id=<?php echo $student['id']; ?>'">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                
-                                            
-                                                <button class="btn-delete" title="Delete" onclick="deleteStudent(<?php echo $student['id']; ?>)">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
+                                <?php if (empty($students)): ?>
+                                    <tr>
+                                        <td colspan="7" class="no-data" style="text-align: center; color: #6c757d; font-style: italic; padding: 50px 20px;">
+                                            <i class="fas fa-users" style="font-size: 3rem; color: #dee2e6; margin-bottom: 1rem;"></i>
+                                            <p>No student records found</p>
                                         </td>
                                     </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                                <?php else: ?>
+                                    <?php foreach ($students as $student): ?>
+                                        <tr data-name="<?php echo strtolower($student['first_name'] . ' ' . $student['last_name']); ?>" 
+                                            data-username="<?php echo strtolower($student['username']); ?>"
+                                            data-course="<?php echo htmlspecialchars($student['college_course']); ?>"
+                                            data-year="<?php echo htmlspecialchars($student['college_year']); ?>">
+                                            <td style="text-align: center;">
+                                                <?php if (!empty($student['image']) && file_exists('../' . $student['image'])): ?>
+                                                    <img src="../<?php echo htmlspecialchars($student['image']); ?>" 
+                                                         alt="Profile" 
+                                                         style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #667eea;">
+                                                <?php else: ?>
+                                                    <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                                        <i class="fas fa-user" style="color: white; font-size: 20px;"></i>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 600; color: #333;">
+                                                    <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
+                                                </div>
+                                                <div style="font-size: 0.8rem; color: #6c757d;">
+                                                    <?php echo htmlspecialchars($student['email']); ?>
+                                                </div>
+                                            </td>
+                                            <td style="font-family: monospace; font-size: 0.85rem;">
+                                                <?php echo htmlspecialchars($student['username']); ?>
+                                            </td>
+                                            <td>
+                                                <?php echo htmlspecialchars($student['college_course']); ?>
+                                            </td>
+                                            <td>
+                                                <?php echo htmlspecialchars($student['college_year']); ?>
+                                            </td>
+                                            <td style="text-align: center;">
+                                                <span class="status-badge status-<?php echo strtolower($student['status']); ?>">
+                                                    <?php echo htmlspecialchars($student['status']); ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="action-buttons">
+                                                    <button class="btn-view" title="View Details" onclick="window.location.href='view_student.php?id=<?php echo $student['id']; ?>'">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button class="btn-delete" title="Delete" onclick="deleteStudent(<?php echo $student['id']; ?>)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -657,129 +653,16 @@ $conn->close();
         border-color: #ced4da;
     }
 
-    /* Navigation styles - Updated to match student_status.php */
-    nav {
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%) !important;
-        border-right: none !important;
-        box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+    /* Navigation styles */
+    nav .nav-links li a.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
     }
 
-    nav .logo-name {
-        display: flex;
-        align-items: center;
-        padding: 15px 10px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        margin-bottom: 15px;
-    }
-
-    nav .logo-image {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-width: 45px;
-        border-radius: 12px;
-    }
-
-    nav .logo-image i {
-        font-size: 28px;
-        color: #fff !important;
-    }
-
-    nav .logo-name .logo_name {
-        font-size: 18px;
-        font-weight: 600;
-        color: #fff !important;
-        margin-left: 12px;
-        white-space: nowrap;
-        transition: opacity 0.3s ease;
-    }
-
-    nav.close .logo_name {
-        opacity: 0;
-        pointer-events: none;
-    }
-
-    nav .menu-items {
-        height: calc(100% - 70px);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        overflow-y: auto;
-    }
-
-    nav .menu-items::-webkit-scrollbar {
-        display: none;
-    }
-
-    .nav-links li {
-        position: relative;
-        margin: 5px 0;
-    }
-
-    .nav-links li a {
-        display: flex;
-        align-items: center;
-        padding: 12px 15px;
-        border-radius: 10px;
-        text-decoration: none;
-        transition: all 0.3s ease;
-    }
-
-    .nav-links li a:hover {
-        background: rgba(255, 255, 255, 0.15);
-        transform: translateX(5px);
-    }
-
-    .nav-links li a.active {
-        background: rgba(255, 255, 255, 0.2);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .nav-links li a i {
-        font-size: 20px;
-        min-width: 25px;
-        color: rgba(255, 255, 255, 0.8) !important;
-        transition: color 0.3s ease;
-    }
-
-    .nav-links li a:hover i,
-    .nav-links li a.active i {
-        color: #fff !important;
-    }
-
-    .nav-links li a .link-name {
-        font-size: 15px;
-        font-weight: 500;
-        color: rgba(255, 255, 255, 0.9) !important;
-        white-space: nowrap;
-        transition: opacity 0.3s ease;
-    }
-
-    nav.close .nav-links li a .link-name {
-        opacity: 0;
-        pointer-events: none;
-    }
-
-    .menu-items .logout-mode {
-        border-top: 1px solid rgba(255, 255, 255, 0.2);
-        padding-top: 15px;
-    }
-
-    /* Override original admin dashboard styles */
-    .nav-links li a .link-name {
-        color: rgba(255, 255, 255, 0.9) !important;
-    }
-    
-    .nav-links li a i {
-        color: rgba(255, 255, 255, 0.8) !important;
-    }
-    
-    nav .logo-image i {
-        color: #fff !important;
-    }
-    
-    nav .logo-name .logo_name {
-        color: #fff !important;
+    nav .nav-links li a.active i,
+    nav .nav-links li a.active .link-name {
+        color: white;
     }
 
     /* Responsive design */
@@ -828,356 +711,223 @@ $conn->close();
         }
     }
 
-    /* Original admin dashboard styles */
-    :root{
-        --primary-color: #0E4BF1;
-        --panel-color: #FFF;
-        --text-color: #000;
-        --black-light-color: #707070;
-        --border-color: #e6e5e5;
-        --toggle-color: #DDD;
-        --box1-color: #4DA3FF;
-        --box2-color: #FFE6AC;
-        --box3-color: #E7D1FC;
-        --title-icon-color: #fff;
-        
-        --tran-05: all 0.5s ease;
-        --tran-03: all 0.3s ease;
-    }
-    
-    body{
-        min-height: 100vh;
-        background-color: var(--panel-color); /* Changed from blue to white */
-    }
-    
-    body.dark{
-        --primary-color: #3A3B3C;
-        --panel-color: #242526;
-        --text-color: #CCC;
-        --black-light-color: #CCC;
-        --border-color: #4D4C4C;
-        --toggle-color: #FFF;
-        --box1-color: #3A3B3C;
-        --box2-color: #3A3B3C;
-        --box3-color: #3A3B3C;
-        --title-icon-color: #CCC;
-    }
-    /* === Custom Scroll Bar CSS === */
-    ::-webkit-scrollbar {
-        width: 8px;
-    }
-    ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: var(--primary-color);
-        border-radius: 12px;
-        transition: all 0.3s ease;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #0b3cc1;
-    }
-    body.dark::-webkit-scrollbar-thumb:hover,
-    body.dark .activity-data::-webkit-scrollbar-thumb:hover{
-        background: #3A3B3C;
-    }
-    
-    /* Force white sidebar colors - Override all conflicting styles */
-    nav,
-    nav.close {
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%) !important;
-        background-color: transparent !important;
-    }
-    
-    nav .logo-image i,
-    nav.close .logo-image i {
-        color: #fff !important;
-    }
-    
-    nav .logo-name .logo_name,
-    nav.close .logo-name .logo_name {
-        color: #fff !important;
-    }
-    
-    .menu-items li a i,
-    nav .menu-items li a i,
-    .nav-links li a i {
-        color: rgba(255, 255, 255, 0.8) !important;
-    }
-    
-    .menu-items li a .link-name,
-    nav .menu-items li a .link-name,
-    .nav-links li a .link-name {
-        color: rgba(255, 255, 255, 0.9) !important;
-    }
-    
-    .menu-items li a:hover i,
-    .nav-links li a:hover i {
-        color: #fff !important;
-    }
-    
-    .menu-items li a:hover .link-name,
-    .nav-links li a:hover .link-name {
-        color: #fff !important;
-    }
-    nav{
-        position: fixed;
-        top: 0;
-        left: 0;
-        height: 100%;
-        width: 250px;
-        padding: 10px 14px;
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%) !important;
-        background-color: transparent !important;
-        border-right: none !important;
-        transition: all 0.4s ease;
-        box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
-    }
-    nav.close{
-        width: 73px;
-    }
-    nav .logo-name{
-        display: flex;
-        align-items: center;
-    }
-    nav .logo-image{
-        display: flex;
-        justify-content: center;
-        min-width: 45px;
-    }
-    nav .logo-image i{
-        font-size: 40px;
-        color: var(--text-color);
-    }
-nav .logo-name .logo_name{
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--text-color);
-        margin-left: 14px;
-        transition: var(--tran-05);
-    }
-    nav.close .logo_name{
-        opacity: 0;
-        pointer-events: none;
-    }
-    nav .menu-items{
-        margin-top: 40px;
-        height: calc(100% - 90px);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-    .menu-items li{
-        list-style: none;
-    }
-    .menu-items li a{
-        display: flex;
-        align-items: center;
-        height: 50px;
-        text-decoration: none;
-        position: relative;
-    }
-    .nav-links li a:hover:before{
-        content: "";
-        position: absolute;
-        left: -7px;
-        height: 5px;
-        width: 5px;
-        border-radius: 50%;
-        background-color: var(--primary-color);
-    }
-    body.dark li a:hover:before{
-        background-color: var(--text-color);
-    }
-.menu-items li a i{
-        font-size: 20px;
-        min-width: 45px;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--black-light-color);
-    }
-.menu-items li a .link-name{
-        font-size: 15px;
-        font-weight: 400;
-        color: var(--black-light-color);    
-        transition: var(--tran-05);
-    }
-    nav.close li a .link-name{
-        opacity: 0;
-        pointer-events: none;
-    }
-    .nav-links li a:hover i,
-    .nav-links li a:hover .link-name{
-        color: var(--primary-color);
-    }
-    body.dark .nav-links li a:hover i,
-    body.dark .nav-links li a:hover .link-name{
-        color: var(--text-color);
-    }
-    .menu-items .logout-mode{
-        padding-top: 10px;
-        border-top: 1px solid var(--border-color);
-    }
-    .menu-items .mode{
-        display: flex;
-        align-items: center;
-        white-space: nowrap;
-    }
-    .menu-items .mode-toggle{
-        position: absolute;
-        right: 14px;
-        height: 50px;
-        min-width: 45px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-    }
-    .mode-toggle .switch{
-        position: relative;
-        display: inline-block;
-        height: 22px;
-        width: 40px;
-        border-radius: 25px;
-        background-color: var(--toggle-color);
-    }
-    .switch:before{
-        content: "";
-        position: absolute;
-        left: 5px;
-        top: 50%;
-        transform: translateY(-50%);
-        height: 15px;
-        width: 15px;
-        background-color: var(--panel-color);
-        border-radius: 50%;
-        transition: var(--tran-03);
-    }
-    body.dark .switch:before{
-        left: 20px;
-    }
-    .dashboard{
-        position: relative;
-        left: 250px;
-        background-color: var(--panel-color);
-        min-height: 100vh;
-        width: calc(100% - 250px);
-        padding: 10px 14px;
-        transition: var(--tran-05);
-    }
-    nav.close ~ .dashboard{
-        left: 73px;
-        width: calc(100% - 73px);
-    }
-    .dashboard .top{
-        position: fixed;
-        top: 0;
-        left: 250px;
-        display: flex;
-        width: calc(100% - 250px);
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 14px;
-        background-color: var(--panel-color);
-        transition: var(--tran-05);
-        z-index: 10;
-    }
-    nav.close ~ .dashboard .top{
-        left: 73px;
-        width: calc(100% - 73px);
-    }
-    .dashboard .top .sidebar-toggle{
-        font-size: 26px;
-        color: var(--text-color);
-        cursor: pointer;
-    }
-    .dashboard .title{
-        display: flex;
-        align-items: center;
-        margin: 80px 0 30px 0;
-    }
-    .dashboard .title i{
-        position: relative;
-        height: 40px;
-        width: 40px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 10px;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-    }
-    .dashboard .title .text{
-        font-size: 24px;
-        font-weight: 600;
-        color: var(--text-color);
-        margin-left: 12px;
-    }
+/* Navigation Sidebar - Student Profile Style */
+nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 250px;
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    padding: 10px 14px;
+    transition: all 0.4s ease;
+    z-index: 1000;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+}
 
-    /* Responsive adjustments */
+nav.close {
+    width: 73px;
+}
+
+nav .logo-name {
+    display: flex;
+    align-items: center;
+    padding: 15px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 15px;
+}
+
+nav .logo-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 45px;
+    border-radius: 12px;
+}
+
+nav .logo-image i {
+    font-size: 28px;
+    color: #fff;
+}
+
+nav .logo_name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    margin-left: 12px;
+    white-space: nowrap;
+    transition: opacity 0.3s ease;
+}
+
+nav.close .logo_name {
+    opacity: 0;
+    pointer-events: none;
+}
+
+nav .menu-items {
+    height: calc(100% - 70px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow-y: auto;
+}
+
+.menu-items::-webkit-scrollbar {
+    display: none;
+}
+
+.menu-items ul {
+    list-style: none;
+}
+
+.nav-links li {
+    position: relative;
+    margin: 5px 0;
+}
+
+.nav-links li a {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.nav-links li a:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.nav-links li a.active {
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.nav-links li a i {
+    font-size: 20px;
+    min-width: 25px;
+    color: rgba(255, 255, 255, 0.8);
+    transition: color 0.3s ease;
+}
+
+.nav-links li a:hover i,
+.nav-links li a.active i {
+    color: #fff;
+}
+
+.nav-links li a .link-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    transition: opacity 0.3s ease;
+}
+
+nav.close .nav-links li a .link-name {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.menu-items .logout-mode {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 15px;
+}
+
+.logout-mode li a {
+    padding: 12px 15px;
+}
+
+/* Dashboard Section */
+.dashboard {
+    position: relative;
+    left: 250px;
+    width: calc(100% - 250px);
+    min-height: 100vh;
+    background: #f5f7fa;
+    padding: 20px 30px;
+    transition: all 0.4s ease;
+}
+
+nav.close ~ .dashboard {
+    left: 73px;
+    width: calc(100% - 73px);
+}
+
+.dashboard .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 0;
+    margin-bottom: 20px;
+}
+
+.sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.sidebar-toggle:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.sidebar-toggle:hover i {
+    color: #fff;
+}
+
+.sidebar-toggle i {
+    font-size: 20px;
+    color: #667eea;
+    transition: color 0.3s ease;
+}
+
+/* Responsive adjustments */
     @media (max-width: 1000px) {
-        nav{
+        nav {
             width: 73px;
         }
-        nav.close{
+        nav.close {
             width: 250px;
         }
-        nav .logo_name{
-            opacity: 0;
-            pointer-events: none;
-        }
-        nav.close .logo_name{
+        nav.close .logo_name,
+        nav.close li a .link-name {
             opacity: 1;
             pointer-events: auto;
         }
-        nav li a .link-name{
-            opacity: 0;
-            pointer-events: none;
-        }
-        nav.close li a .link-name{
-            opacity: 1;
-            pointer-events: auto;
-        }
-        nav ~ .dashboard{
-            left: 73px;
-            width: calc(100% - 73px);
-        }
-        nav.close ~ .dashboard{
-            left: 250px;
-            width: calc(100% - 250px);
-        }
-        nav ~ .dashboard .top{
-            left: 73px;
-            width: calc(100% - 73px);
-        }
-        nav.close ~ .dashboard .top{
+        nav.close ~ .dashboard,
+        nav.close ~ .dashboard .top {
             left: 250px;
             width: calc(100% - 250px);
         }
     }
     
     @media (max-width: 780px) {
-        .dashboard .title{
+        .dashboard .title {
             margin: 80px 0 20px 0;
         }
-        .dashboard .title .text{
+        .dashboard .title .text {
             font-size: 20px;
         }
     }
     
     @media (max-width: 560px) {
-        .dashboard .title{
+        .dashboard .title {
             margin: 80px 0 15px 0;
         }
-        .dashboard .title .text{
+        .dashboard .title .text {
             font-size: 18px;
         }
     }
 
-    /* Alert Message Styles - Fixed to ensure green background for success */
+    /* Alert Message Styles */
     .alert-message.success {
         background-color: #d4edda !important;
         border-color: #c3e6cb !important;
@@ -1199,102 +949,6 @@ nav .logo-name .logo_name{
             opacity: 1;
             transform: translateY(0);
         }
-    }
-
-    /* Sidebar Toggle Button */
-    .sidebar-toggle {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        background: #fff;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
-    }
-
-    .sidebar-toggle:hover {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-
-    .sidebar-toggle:hover i {
-        color: #fff;
-    }
-
-    .sidebar-toggle i {
-        font-size: 20px;
-        color: #667eea;
-        transition: color 0.3s ease;
-    }
-
-    /* Dashboard Section */
-    .dashboard {
-        position: relative;
-        left: 250px;
-        width: calc(100% - 250px);
-        min-height: 100vh;
-        background: #f5f7fa;
-        padding: 20px 30px;
-        transition: all 0.4s ease;
-    }
-
-    nav.close ~ .dashboard {
-        left: 73px;
-        width: calc(100% - 73px);
-    }
-
-    .dashboard .top {
-        position: fixed;
-        top: 0;
-        left: 250px;
-        display: flex;
-        width: calc(100% - 250px);
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 14px;
-        background: #f5f7fa;
-        transition: all 0.4s ease;
-        z-index: 10;
-    }
-
-    nav.close ~ .dashboard .top {
-        left: 73px;
-        width: calc(100% - 73px);
-    }
-
-    /* Title Section */
-    .dashboard .title {
-        display: flex;
-        align-items: center;
-        margin: 80px 0 30px 0;
-    }
-
-    .dashboard .title i {
-        position: relative;
-        height: 40px;
-        width: 40px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 10px;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-    }
-
-    .dashboard .title .text {
-        font-size: 24px;
-        font-weight: 600;
-        color: #2d3748;
-        margin-left: 12px;
-    }
-
-    /* Body Background */
-    body {
-        background: #f5f7fa;
-        min-height: 100vh;
     }
 
 </style>

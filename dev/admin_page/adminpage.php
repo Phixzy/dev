@@ -62,20 +62,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (isset($_POST['appointment_date']) && isset($_POST['start_time'])) {
         $appointment_date = $_POST['appointment_date'];
         $start_time = $_POST['start_time'];
-        $end_time = $_POST['end_time'];
+        // Automatically calculate end time as 1 hour after start time
+        $end_time = date('H:i', strtotime($start_time . ' +1 hour'));
         $total_slots = $_POST['total_slots'];
         $available_slots = $total_slots; // Initially, available slots equal total slots
-        
+
         // Basic validation
-        if (empty($appointment_date) || empty($start_time) || empty($end_time) || empty($total_slots)) {
+        if (empty($appointment_date) || empty($start_time) || empty($total_slots)) {
             setErrorMessage("All fields are required!");
-            header('Location: adminpage.php');
-            exit();
-        }
-        
-        // Validate time range
-        if (strtotime($start_time) >= strtotime($end_time)) {
-            setErrorMessage("End time must be after start time!");
             header('Location: adminpage.php');
             exit();
         }
@@ -399,8 +393,8 @@ $conn->close();
                     <input type="time" id="start_time" name="start_time" required>
                 </div>
                 <div class="form-group">
-                    <label for="end_time"><i class="fas fa-clock"></i> End Time</label>
-                    <input type="time" id="end_time" name="end_time" required>
+                    <label for="end_time_display"><i class="fas fa-clock"></i> End Time </label>
+                    <input type="text" id="end_time_display" readonly style="background: #e9ecef; cursor: not-allowed;">
                 </div>
                 <div class="form-group">
                     <label for="total_slots"><i class="fas fa-users"></i> Total Slots</label>
@@ -464,8 +458,8 @@ $conn->close();
                
                 
                 <div class="form-actions">
-                    <button type="submit" class="btn-submit" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(40, 167, 69, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 8px rgba(40, 167, 69, 0.3)'">
-                        <i class="fas fa-plus" style="font-size: 16px;"></i> Add Subject & Instructor
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-plus"></i> Add Subject & Instructor
                     </button>
                 </div>
              
@@ -732,8 +726,42 @@ $conn->close();
         }
     }
 
+    // Function to update end time display when start time changes
+    function updateEndTime() {
+        const startTimeInput = document.getElementById('start_time');
+        const endTimeDisplay = document.getElementById('end_time_display');
+
+        if (startTimeInput && endTimeDisplay) {
+            const startTime = startTimeInput.value;
+            if (startTime) {
+                // Calculate end time as 1 hour after start time
+                const startDate = new Date(`2000-01-01T${startTime}:00`);
+                startDate.setHours(startDate.getHours() + 1);
+                const endTime = startDate.toTimeString().slice(0, 5); // HH:MM format
+
+                // Format for display (12-hour format with AM/PM)
+                const endDate = new Date(`2000-01-01T${endTime}:00`);
+                const formattedEndTime = endDate.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+
+                endTimeDisplay.value = formattedEndTime;
+            } else {
+                endTimeDisplay.value = '';
+            }
+        }
+    }
+
     // Wait for DOM to load
     document.addEventListener('DOMContentLoaded', function() {
+        // Add event listener to start time input
+        const startTimeInput = document.getElementById('start_time');
+        if (startTimeInput) {
+            startTimeInput.addEventListener('change', updateEndTime);
+            startTimeInput.addEventListener('input', updateEndTime);
+        }
         // Enhanced button functionality
         const buttons = document.querySelectorAll('button');
         buttons.forEach(button => {

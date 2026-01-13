@@ -166,9 +166,9 @@ switch(strtoupper($student['status'])) {
                 <a href="student_status.php" class="back-button">
                     <i class="fas fa-arrow-left"></i> Back to Student Status
                 </a>
-                <button onclick="editStudent(<?php echo $student['id']; ?>)" class="edit-button">
+                <a href="edit_student.php?id=<?php echo $student_id; ?>" class="edit-button">
                     <i class="fas fa-edit"></i> Edit Student Information
-                </button>
+                </a>
             </div>
             
             <div class="profile-container">
@@ -385,12 +385,7 @@ switch(strtoupper($student['status'])) {
         }
     }
 
-    // Edit student function
-    function editStudent(studentId) {
-        if (confirm('Are you sure you want to edit this student\'s information?')) {
-            window.location.href = 'edit_student.php?id=' + studentId;
-        }
-    }
+
 
     // Enhanced button functionality
     document.addEventListener('DOMContentLoaded', function() {

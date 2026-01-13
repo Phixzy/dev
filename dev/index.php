@@ -26,6 +26,8 @@ $hero_background = getSetting('hero_background', 'linear-gradient(135deg, #667ee
 $hero_background_image = getSetting('hero_background_image');
 $navbar_background = getSetting('navbar_background', 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)');
 $navbar_text_color = getSetting('navbar_text_color', '#ffffff');
+$navbar_university_text = getSetting('navbar_university_text', 'University');
+$footer_university_text = getSetting('footer_university_text', 'University');
 
 $message = '';
 $error = '';
@@ -153,6 +155,8 @@ $conn->close();
         /* Hero Section */
         .hero {
             background: <?php echo $hero_background_image ? 'url(uploads/' . htmlspecialchars($hero_background_image) . ') center/cover no-repeat' : htmlspecialchars($hero_background); ?>;
+            background-size: 100% 100%;
+            background-attachment: fixed;
             min-height: 500px;
             display: flex;
             align-items: center;
@@ -635,7 +639,7 @@ $conn->close();
             <?php else: ?>
                 <i class="uil uil-graduation-cap"></i>
             <?php endif; ?>
-            University
+            <?php echo htmlspecialchars($navbar_university_text); ?>
         </h1>
         <nav>
             <ul>
@@ -673,7 +677,7 @@ $conn->close();
         <div class="footer-content">
             <div class="footer-logo">
                 <i class="uil uil-graduation-cap"></i>
-                <span>University</span>
+                <span><?php echo htmlspecialchars($footer_university_text); ?></span>
             </div>
             <div class="footer-links">
                 <a href="#">Home</a>

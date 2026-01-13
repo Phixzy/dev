@@ -47,8 +47,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $settings = [
             'hero_title', 'hero_subtitle',
             'hero_background', 'hero_background_image',
-            'navbar_background', 'navbar_text_color',
-            'footer_copyright'
+            'navbar_background', 'navbar_text_color', 'navbar_university_text',
+            'footer_university_text', 'footer_copyright'
         ];
 
         foreach ($settings as $setting) {
@@ -301,7 +301,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <label>Navbar Preview:</label>
                     <div style="background: <?php echo getSetting('navbar_background', 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'); ?>; padding: 1rem 2rem; display: flex; align-items: center; gap: 12px; border-radius: 10px; max-width: 400px;">
                         <img src="../uploads/<?php echo htmlspecialchars($logo_url); ?>" alt="Logo" style="height: 40px; width: auto;">
-                        <span style="color: <?php echo getSetting('navbar_text_color', 'white'); ?>; font-weight: 700; font-size: 1.3rem;">University</span>
+                        <span id="logo_preview_university_text" style="color: <?php echo getSetting('navbar_text_color', 'white'); ?>; font-weight: 700; font-size: 1.3rem;"><?php echo htmlspecialchars(getSetting('navbar_university_text', 'University')); ?></span>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -310,6 +310,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <!-- Navbar Settings -->
             <div class="form-section">
                 <h2 class="section-title"><i class="fas fa-bars"></i> Navbar Settings</h2>
+
+                <div class="form-group">
+                    <label for="navbar_university_text">University Name (in Navbar)</label>
+                    <input type="text" id="navbar_university_text" name="navbar_university_text" value="<?php echo htmlspecialchars(getSetting('navbar_university_text', 'University')); ?>" placeholder="Enter the university name">
+                    <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">This text appears next to the logo in the navbar</p>
+                </div>
 
                 <div class="form-group">
                     <label for="navbar_background">Navbar Background (CSS gradient or color)</label>
@@ -326,7 +332,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="form-group">
                     <label>Preview:</label>
                     <div id="navbar_preview" style="background: <?php echo htmlspecialchars(getSetting('navbar_background', 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)')); ?>; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-radius: 10px; max-width: 400px;">
-                        <span style="color: <?php echo htmlspecialchars(getSetting('navbar_text_color', '#ffffff')); ?>; font-weight: 700; font-size: 1.3rem;">University</span>
+                        <span id="navbar_university_preview" style="color: <?php echo htmlspecialchars(getSetting('navbar_text_color', '#ffffff')); ?>; font-weight: 700; font-size: 1.3rem;"><?php echo htmlspecialchars(getSetting('navbar_university_text', 'University')); ?></span>
                         <a href="#" style="color: <?php echo htmlspecialchars(getSetting('navbar_text_color', '#ffffff')); ?>; text-decoration: none;">Menu</a>
                     </div>
                 </div>
@@ -338,12 +344,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 <div class="form-group">
                     <label for="hero_title">Hero Title</label>
-                    <input type="text" id="hero_title" name="hero_title" value="<?php echo htmlspecialchars(getSetting('hero_title')); ?>" required>
+                    <input type="text" id="hero_title" name="hero_title" value="<?php echo htmlspecialchars(getSetting('hero_title')); ?>" >
                 </div>
 
                 <div class="form-group">
                     <label for="hero_subtitle">Hero Subtitle</label>
-                    <input type="text" id="hero_subtitle" name="hero_subtitle" value="<?php echo htmlspecialchars(getSetting('hero_subtitle')); ?>" required>
+                    <input type="text" id="hero_subtitle" name="hero_subtitle" value="<?php echo htmlspecialchars(getSetting('hero_subtitle')); ?>">
                 </div>
             </div>
 
@@ -368,8 +374,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <h2 class="section-title"><i class="fas fa-copyright"></i> Footer</h2>
 
                 <div class="form-group">
+                    <label for="footer_university_text">University Name (in Footer)</label>
+                    <input type="text" id="footer_university_text" name="footer_university_text" value="<?php echo htmlspecialchars(getSetting('footer_university_text', 'University')); ?>" placeholder="Enter the university name">
+                    <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">This text appears before the copyright notice in the footer</p>
+                </div>
+
+                <div class="form-group">
                     <label for="footer_copyright">Copyright Text</label>
-                    <input type="text" id="footer_copyright" name="footer_copyright" value="<?php echo htmlspecialchars(getSetting('footer_copyright')); ?>" required>
+                    <input type="text" id="footer_copyright" name="footer_copyright" value="<?php echo htmlspecialchars(getSetting('footer_copyright')); ?>" >
                 </div>
             </div>
 
@@ -403,6 +415,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 for (var i = 0; i < spans.length; i++) {
                     spans[i].style.color = this.value;
                 }
+            }
+        });
+
+        // Update navbar university text preview
+        document.getElementById('navbar_university_text').addEventListener('input', function() {
+            var preview = document.getElementById('navbar_university_preview');
+            if (preview) {
+                preview.textContent = this.value || 'University';
+            }
+            // Also update logo preview if exists
+            var logoPreview = document.getElementById('logo_preview_university_text');
+            if (logoPreview) {
+                logoPreview.textContent = this.value || 'University';
             }
         });
     </script>

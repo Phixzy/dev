@@ -1,24 +1,22 @@
+
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 session_start();
 
-// Database connection
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "dev";
+$students = [];
 
-$conn = new mysqli($servername, $username, $password, $dbname);
+require_once '../config/dbcon.php';
 
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    die("Database connection failed: " . $conn->connect_error);
 }
 
-// Fetch all students (excluding admin accounts)
-$students = [];
-$sql = "SELECT id, username, first_name, last_name, email, image, college_course, college_year, status, created_at 
+// Fetch all students from database
+$sql = "SELECT id, username, first_name, last_name, email, image, college_course, college_year, status 
         FROM students 
-        WHERE username LIKE '%@student' 
-        ORDER BY created_at DESC";
+        ORDER BY id DESC";
 $result = $conn->query($sql);
 
 if ($result && $result->num_rows > 0) {
@@ -26,8 +24,6 @@ if ($result && $result->num_rows > 0) {
         $students[] = $row;
     }
 }
-
-$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -46,7 +42,7 @@ $conn->close();
     <!-- Navigation Sidebar -->
     <nav>
         <div class="logo-name">
-                      <span class="logo_name"><?php echo htmlspecialchars($_SESSION['admin_username']); ?></span>
+                      <span class="logo_name"><?php echo isset($_SESSION['admin_username']) ? htmlspecialchars($_SESSION['admin_username']) : 'Admin'; ?></span>
 
         </div>
         <div class="menu-items">
@@ -119,6 +115,7 @@ $conn->close();
             unset($_SESSION['error']);
             echo '</div>';
         }
+        
         ?>
         
         <div class="activity">
@@ -178,71 +175,71 @@ $conn->close();
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (empty($students)): ?>
-                                <tr>
-                                    <td colspan="7" class="no-data" style="text-align: center; color: #6c757d; font-style: italic; padding: 50px 20px;">
-                                        <i class="fas fa-users" style="font-size: 3rem; color: #dee2e6; margin-bottom: 1rem;"></i>
-                                        <p>No student records found</p>
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($students as $student): ?>
-                                    <tr data-name="<?php echo strtolower($student['first_name'] . ' ' . $student['last_name']); ?>" 
-                                        data-username="<?php echo strtolower($student['username']); ?>"
-                                        data-course="<?php echo htmlspecialchars($student['college_course']); ?>"
-                                        data-year="<?php echo htmlspecialchars($student['college_year']); ?>">
-                                        <td style="text-align: center;">
-                                            <?php if (!empty($student['image']) && file_exists('../' . $student['image'])): ?>
-                                                <img src="../<?php echo htmlspecialchars($student['image']); ?>" 
-                                                     alt="Profile" 
-                                                     style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #667eea;">
-                                            <?php else: ?>
-                                                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                                                    <i class="fas fa-user" style="color: white; font-size: 20px;"></i>
-                                                </div>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <div style="font-weight: 600; color: #333;">
-                                                <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
-                                            </div>
-                                            <div style="font-size: 0.8rem; color: #6c757d;">
-                                                <?php echo htmlspecialchars($student['email']); ?>
-                                            </div>
-                                        </td>
-                                        <td style="font-family: monospace; font-size: 0.85rem;">
-                                            <?php echo htmlspecialchars($student['username']); ?>
-                                        </td>
-                                        <td>
-                                            <?php echo htmlspecialchars($student['college_course']); ?>
-                                        </td>
-                                        <td>
-                                            <?php echo htmlspecialchars($student['college_year']); ?>
-                                        </td>
-                                        <td style="text-align: center;">
-                                            <span class="status-badge status-<?php echo strtolower($student['status']); ?>">
-                                                <?php echo htmlspecialchars($student['status']); ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="action-buttons">
-                                                <button class="btn-view" title="View Details" onclick="window.location.href='view_student.php?id=<?php echo $student['id']; ?>'">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn-approve" title="Approve" onclick="approveStudent(<?php echo $student['id']; ?>)" <?php echo $student['status'] === 'approved' ? 'disabled' : ''; ?>>
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                                <button class="btn-reject" title="Reject" onclick="rejectStudent(<?php echo $student['id']; ?>)" <?php echo $student['status'] === 'rejected' ? 'disabled' : ''; ?>>
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                                <button class="btn-delete" title="Delete" onclick="deleteStudent(<?php echo $student['id']; ?>)">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
+                                <?php if (empty($students)): ?>
+                                    <tr>
+                                        <td colspan="7" class="no-data" style="text-align: center; color: #6c757d; font-style: italic; padding: 50px 20px;">
+                                            <i class="fas fa-users" style="font-size: 3rem; color: #dee2e6; margin-bottom: 1rem;"></i>
+                                            <p>No student records found</p>
                                         </td>
                                     </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                                <?php else: ?>
+                                    <?php foreach ($students as $student): ?>
+                                        <tr data-name="<?php echo strtolower($student['first_name'] . ' ' . $student['last_name']); ?>" 
+                                            data-username="<?php echo strtolower($student['username']); ?>"
+                                            data-course="<?php echo htmlspecialchars($student['college_course']); ?>"
+                                            data-year="<?php echo htmlspecialchars($student['college_year']); ?>">
+                                            <td style="text-align: center;">
+                                                <?php if (!empty($student['image']) && file_exists('../' . $student['image'])): ?>
+                                                    <img src="../<?php echo htmlspecialchars($student['image']); ?>" 
+                                                         alt="Profile" 
+                                                         style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #667eea;">
+                                                <?php else: ?>
+                                                    <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                                        <i class="fas fa-user" style="color: white; font-size: 20px;"></i>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 600; color: #333;">
+                                                    <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
+                                                </div>
+                                                <div style="font-size: 0.8rem; color: #6c757d;">
+                                                    <?php echo htmlspecialchars($student['email']); ?>
+                                                </div>
+                                            </td>
+                                            <td style="font-family: monospace; font-size: 0.85rem;">
+                                                <?php echo htmlspecialchars($student['username']); ?>
+                                            </td>
+                                            <td>
+                                                <?php echo htmlspecialchars($student['college_course']); ?>
+                                            </td>
+                                            <td>
+                                                <?php echo htmlspecialchars($student['college_year']); ?>
+                                            </td>
+                                            <td style="text-align: center;">
+                                                <span class="status-badge status-<?php echo strtolower($student['status']); ?>">
+                                                    <?php echo htmlspecialchars($student['status']); ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="action-buttons">
+                                                    <button class="btn-view" title="View Details" onclick="window.location.href='view_student.php?id=<?php echo $student['id']; ?>'">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button class="btn-approve" title="Approve" onclick="approveStudent(<?php echo $student['id']; ?>)" <?php echo $student['status'] === 'approved' ? 'disabled' : ''; ?>>
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    <button class="btn-reject" title="Reject" onclick="rejectStudent(<?php echo $student['id']; ?>)" <?php echo $student['status'] === 'rejected' ? 'disabled' : ''; ?>>
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                    <button class="btn-delete" title="Delete" onclick="deleteStudent(<?php echo $student['id']; ?>)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                         </tbody>
                     </table>
                 </div>

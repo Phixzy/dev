@@ -1,9 +1,5 @@
 <?php
-/**
- * Migration Script: Update course values from abbreviations to full names
- * This script updates existing subjects in the database to use full course names
- * instead of abbreviations (CS, IT, CE -> BS Computer Science, etc.)
- */
+
 
 session_start();
 require_once '../config/dbcon.php';
